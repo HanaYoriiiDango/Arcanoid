@@ -105,6 +105,9 @@ int APIENTRY wWinMain( // Точка входа с поддержкой юник
     }
 }
 
+
+
+
 // Обработка сообщений
 LRESULT CALLBACK WndProc(
 
