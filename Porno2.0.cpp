@@ -16,6 +16,16 @@ struct { // если делать через структуру
 
 } window;
 
+struct sprite {
+    float x, y;
+    int widht, height;
+    HBITMAP hBitmap;
+
+};
+
+sprite ball;
+sprite racket;
+
 void InitWindow() {
 
     RECT r;
@@ -27,6 +37,8 @@ void InitWindow() {
 }
 
 void ShowBmp() {
+
+
 
 
 
@@ -128,6 +140,8 @@ LRESULT CALLBACK WndProc(
     case WM_CREATE: // здесь загрузка всех ресурсов при поздании окна 
 
         window.hBack = (HBITMAP)LoadImageW(NULL, L"fon.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        ball.hBitmap = (HBITMAP)LoadImageW(NULL, L"ball.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        racket.hBitmap = (HBITMAP)LoadImageW(NULL, L"racket.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
         break;
 
