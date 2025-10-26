@@ -34,15 +34,24 @@ void InitWindow() {
     window.width = r.right - r.left;
     window.height = r.bottom - r.top;
 
+    ball.x = 100;
+    ball.y = 100;
+
+    racket.x = 250;
+    racket.y = 250;
+
 }
 
-void ShowBmp() {
+void ShowBmp(HDC hdc, HDC memDC, sprite Object) {
 
+    BITMAP bmp;
+    GetObject(Object.hBitmap, sizeof(BITMAP), &bmp);
 
+    if (Object.hBitmap) {
 
-
-
-
+        TransparentBlt(hdc, Object.x, Object.y, Object.widht, Object.height, memDC, 0, 0, Object.widht, Object.height, RGB(0, 0, 0));
+        // пиксели черного цвета будут прозрачными 
+    }
 }
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM); // просто объявление функции
@@ -117,9 +126,6 @@ int APIENTRY wWinMain( // Точка входа с поддержкой юникода (WINAPI - для примеро
     }
 }
 
-
-
-
 // Обработка сообщений
 LRESULT CALLBACK WndProc(
 
@@ -159,6 +165,9 @@ LRESULT CALLBACK WndProc(
         hOld = (HBITMAP)SelectObject(mem_dc, window.hBack);
 
         StretchBlt(hdc, 0, 0, window.width, window.height, mem_dc, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
+
+        ShowBmp(hdc, mem_dc, racket);
+        ShowBmp(hdc, mem_dc, ball);
 
         SelectObject(mem_dc, hOld); // если закомментить все равно работает 
 
