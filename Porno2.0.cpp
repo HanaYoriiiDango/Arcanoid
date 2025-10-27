@@ -220,7 +220,7 @@ LRESULT CALLBACK WndProc(
     HWND hwnd, // дескриптор (идентификатьор) окна
     UINT msg, // числвой код события 
     WPARAM wParam, // доп инфа о сообщзениях
-    LPARAM lParam // WPARAM (обработка клавиш), LPARAM (движение курсора)
+    LPARAM lParam // WPARAM (обработка клавиш), LPARAM (движение курсора) 
 
 ) {
 
