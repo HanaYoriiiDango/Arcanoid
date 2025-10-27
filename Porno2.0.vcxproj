@@ -136,6 +136,7 @@
     <ResourceCompile Include="Porno2.0.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="kotek.bmp" />
     <Image Include="Porno2.0.ico" />
     <Image Include="small.ico" />
   </ItemGroup>

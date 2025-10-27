@@ -45,5 +45,8 @@
     <Image Include="Porno2.0.ico">
       <Filter>Resource Files</Filter>
     </Image>
+    <Image Include="kotek.bmp">
+      <Filter>Resource Files</Filter>
+    </Image>
   </ItemGroup>
 </Project>

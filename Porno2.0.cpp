@@ -1,15 +1,17 @@
-#include <windows.h>
+п»ї#include <windows.h>
 #include <algorithm>
 #include <wingdi.h> 
 #include <vector>
+#include <iostream>
+#include <cmath>
 
 using namespace std;
 
-//linker::system::subsystem  - Windows(/ SUBSYSTEM:WINDOWS) - ожидает wWinMain, а не main  ? Alt+251.
-//configuration::advanced::character set - not set - могу обращаться к структурам c typedef ? Alt+0215
+//linker::system::subsystem  - Windows(/ SUBSYSTEM:WINDOWS) - РѕР¶РёРґР°РµС‚ wWinMain, Р° РЅРµ main  ? Alt+251.
+//configuration::advanced::character set - not set - РјРѕРіСѓ РѕР±СЂР°С‰Р°С‚СЊСЃСЏ Рє СЃС‚СЂСѓРєС‚СѓСЂР°Рј c typedef ? Alt+0215
 //linker::input::additional dependensies Msimg32.lib; Winmm.lib ?
 
-struct { // если делать через структуру
+struct { // РµСЃР»Рё РґРµР»Р°С‚СЊ С‡РµСЂРµР· СЃС‚СЂСѓРєС‚СѓСЂСѓ
     HWND hwnd;
     HBITMAP hBack;
     HDC hdc, mem_dc;
@@ -18,8 +20,9 @@ struct { // если делать через структуру
 } window;
 
 struct sprite {
-    float x, y, speed;
+    float x, y, speed, dx, dy;
     int widht, height;
+    bool active = true;
     HBITMAP hBitmap;
 
 };
@@ -29,8 +32,10 @@ struct {
 
 } game;
 
+const int line = 15, column = 7;
 sprite ball;
 sprite racket;
+sprite block[line][column];
 
 void InitWindow() {
 
@@ -40,196 +45,236 @@ void InitWindow() {
     window.width = r.right - r.left;
     window.height = r.bottom - r.top;
 
+}
+
+void InitGame() {
+
+    srand(time(nullptr));
+
+    window.hBack = (HBITMAP)LoadImageW(NULL, L"fon.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    racket.hBitmap = (HBITMAP)LoadImageW(NULL, L"racket.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    ball.hBitmap = (HBITMAP)LoadImageW(NULL, L"ball.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    auto bmpBlock = (HBITMAP)LoadImageW(NULL, L"kotek.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+
     float slow = 0.8f;
 
     racket.widht = 300;
     racket.height = 40;
-    racket.x = window.width / 2.0f; // ракетка ровно посередне экрана
-    racket.y = window.height - racket.height; // выше границы экрана на свою высоту
+    racket.x = window.width / 2.0f; // СЂР°РєРµС‚РєР° СЂРѕРІРЅРѕ РїРѕСЃРµСЂРµРґРЅРµ СЌРєСЂР°РЅР°
+    racket.y = window.height - racket.height; // РІС‹С€Рµ РіСЂР°РЅРёС†С‹ СЌРєСЂР°РЅР° РЅР° СЃРІРѕСЋ РІС‹СЃРѕС‚Сѓ
     racket.speed = 20.0f * slow;
 
     ball.widht = 40;
     ball.height = 40;
-    ball.x = (window.width + racket.widht - ball.widht) / 2.0f; // половина экрана, половина ракетки с учетом ширины шарика
-    ball.y = racket.y - racket.height; // шарк выше ракетки на ее высоту
+    ball.speed = 20;
+    ball.x = (window.width + racket.widht - ball.widht) / 2.0f; // РїРѕР»РѕРІРёРЅР° СЌРєСЂР°РЅР°, РїРѕР»РѕРІРёРЅР° СЂР°РєРµС‚РєРё СЃ СѓС‡РµС‚РѕРј С€РёСЂРёРЅС‹ С€Р°СЂРёРєР°
+    ball.y = racket.y - racket.height; // С€Р°СЂРє РІС‹С€Рµ СЂР°РєРµС‚РєРё РЅР° РµРµ РІС‹СЃРѕС‚Сѓ
+    ball.dy = (rand() % 50 + 50) / 100;
+    ball.dx = abs(1 - ball.dy);
 
+    for (int i = 0; i < line; i++) {
+        for (int j = 0; j < column; j++) {
+
+            block[i][j].widht = window.width / line;
+            block[i][j].height = window.height / 4 / column;
+            block[i][j].x = block[i][j].widht * i;
+            block[i][j].y = block[i][j].height * j + window.height / 4;
+            block[i][j].hBitmap = bmpBlock;
+
+        }
+    }
 }
 
+void ShowSprite(int x, int y, int w, int h, HBITMAP hBitmap, bool transparent) {
 
-void ShowSprite(sprite Object) {
-
+    BITMAP bm;
     HDC memDC = CreateCompatibleDC(window.mem_dc);
-    HBITMAP hold = (HBITMAP)SelectObject(memDC, Object.hBitmap);
+    HBITMAP hOldBitmap = (HBITMAP)SelectObject(memDC, hBitmap);
 
-    if (Object.hBitmap) {
+    if (hBitmap) {
 
-        // пиксели черного цвета будут прозрачными 
-        TransparentBlt(window.hdc, Object.x, Object.y, Object.widht, Object.height, memDC, 0, 0, Object.widht, Object.height, RGB(0, 0, 0));
+        GetObject(hBitmap, sizeof(BITMAP), &bm);
+
+        if (transparent) TransparentBlt(window.mem_dc, x, y, w, h, memDC, 0, 0, w, h, RGB(0, 0, 0));
+        else StretchBlt(window.mem_dc, x, y, w, h, memDC, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
 
     }
 
-    SelectObject(memDC, hold);
+    SelectObject(memDC, hOldBitmap);
 
-    DeleteObject(hold);
+    DeleteObject(hOldBitmap);
     DeleteDC(memDC);
-    ReleaseDC(window.hwnd, memDC);
+
 }
 
-void ShowBack() {
+void ShowObject() {
 
-    HBITMAP hOld;
+    ShowSprite(0, 0, window.width, window.height, window.hBack, false);
+    ShowSprite(racket.x, racket.y, racket.widht, racket.height, racket.hBitmap, true);
+    ShowSprite(ball.x, ball.y, ball.widht, ball.height, ball.hBitmap, true);
 
-    BITMAP bmp;
-    GetObject(window.hBack, sizeof(BITMAP), &bmp);
+    for (int i = 0; i < line; i++) {
+        for (int j = 0; j < column; j++) {
 
-    window.mem_dc = CreateCompatibleDC(window.hdc);
-    hOld = (HBITMAP)SelectObject(window.mem_dc, window.hBack);
+            ShowSprite(block[i][j].x, block[i][j].y, block[i][j].widht, block[i][j].height, block[i][j].hBitmap, true);
 
-    StretchBlt(window.hdc, 0, 0, window.width, window.height, window.mem_dc, 0, 0, bmp.bmWidth, bmp.bmHeight, SRCCOPY);
-
-    ShowBmp(racket);
-    ShowBmp(ball);
-
-    SelectObject(window.mem_dc, hOld); // если закомментить все равно работает 
-
-    DeleteObject(hOld);
-    DeleteDC(window.mem_dc);
-    ReleaseDC(hwnd, window.mem_dc);
-
+        }
+    }
 }
 
 void ShowGame() {
 
+    window.mem_dc = CreateCompatibleDC(window.hdc);
+    HBITMAP hMemBmp = CreateCompatibleBitmap(window.hdc, window.width, window.height);
+    HBITMAP hOldBmp = (HBITMAP)SelectObject(window.mem_dc, hMemBmp);
 
+    ShowObject();
 
+    BitBlt(window.hdc, 0, 0, window.width, window.height, window.mem_dc, 0, 0, SRCCOPY);
 
+    SelectObject(window.mem_dc, hOldBmp);
+    DeleteObject(hOldBmp);
+    DeleteDC(window.mem_dc);
 }
 
-LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM); // просто объявление функции
-// так правильнее потому что компилятору в main нужно знать какой обработчик использовать для класса окна 
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM); // РїСЂРѕСЃС‚Рѕ РѕР±СЉСЏРІР»РµРЅРёРµ С„СѓРЅРєС†РёРё
+// С‚Р°Рє РїСЂР°РІРёР»СЊРЅРµРµ РїРѕС‚РѕРјСѓ С‡С‚Рѕ РєРѕРјРїРёР»СЏС‚РѕСЂСѓ РІ main РЅСѓР¶РЅРѕ Р·РЅР°С‚СЊ РєР°РєРѕР№ РѕР±СЂР°Р±РѕС‚С‡РёРє РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РґР»СЏ РєР»Р°СЃСЃР° РѕРєРЅР° 
 
-int APIENTRY wWinMain( // Точка входа с поддержкой юникода (WINAPI - для примеров в доках)
-	_In_ HINSTANCE hInstance, // "паспорт" приложения 
-	_In_opt_ HINSTANCE hPrevInstance, // дескриптор предыдущего экземпляра, в современных всегда NULL
-	_In_ PWSTR pCmdLine, // командная строка приложения, LPWSTR - указатель на строку в формате юникода
-	_In_ int nCmdShow // параметр с флагами, определяющими начальное состояние окна 
+int APIENTRY wWinMain( // РўРѕС‡РєР° РІС…РѕРґР° СЃ РїРѕРґРґРµСЂР¶РєРѕР№ СЋРЅРёРєРѕРґР° (WINAPI - РґР»СЏ РїСЂРёРјРµСЂРѕРІ РІ РґРѕРєР°С…)
+	_In_ HINSTANCE hInstance, // "РїР°СЃРїРѕСЂС‚" РїСЂРёР»РѕР¶РµРЅРёСЏ 
+	_In_opt_ HINSTANCE hPrevInstance, // РґРµСЃРєСЂРёРїС‚РѕСЂ РїСЂРµРґС‹РґСѓС‰РµРіРѕ СЌРєР·РµРјРїР»СЏСЂР°, РІ СЃРѕРІСЂРµРјРµРЅРЅС‹С… РІСЃРµРіРґР° NULL
+	_In_ PWSTR pCmdLine, // РєРѕРјР°РЅРґРЅР°СЏ СЃС‚СЂРѕРєР° РїСЂРёР»РѕР¶РµРЅРёСЏ, LPWSTR - СѓРєР°Р·Р°С‚РµР»СЊ РЅР° СЃС‚СЂРѕРєСѓ РІ С„РѕСЂРјР°С‚Рµ СЋРЅРёРєРѕРґР°
+	_In_ int nCmdShow // РїР°СЂР°РјРµС‚СЂ СЃ С„Р»Р°РіР°РјРё, РѕРїСЂРµРґРµР»СЏСЋС‰РёРјРё РЅР°С‡Р°Р»СЊРЅРѕРµ СЃРѕСЃС‚РѕСЏРЅРёРµ РѕРєРЅР° 
 
-	// _In_ - система аннотаций SAL (Source Annotation Language). Документируют код,
-	// явно показывая назначения параметров для компилятора
-	// предотвращает краши и ускоряет разработку, т.к в случае чего компилятор сообщит об ошибке
+	// _In_ - СЃРёСЃС‚РµРјР° Р°РЅРЅРѕС‚Р°С†РёР№ SAL (Source Annotation Language). Р”РѕРєСѓРјРµРЅС‚РёСЂСѓСЋС‚ РєРѕРґ,
+	// СЏРІРЅРѕ РїРѕРєР°Р·С‹РІР°СЏ РЅР°Р·РЅР°С‡РµРЅРёСЏ РїР°СЂР°РјРµС‚СЂРѕРІ РґР»СЏ РєРѕРјРїРёР»СЏС‚РѕСЂР°
+	// РїСЂРµРґРѕС‚РІСЂР°С‰Р°РµС‚ РєСЂР°С€Рё Рё СѓСЃРєРѕСЂСЏРµС‚ СЂР°Р·СЂР°Р±РѕС‚РєСѓ, С‚.Рє РІ СЃР»СѓС‡Р°Рµ С‡РµРіРѕ РєРѕРјРїРёР»СЏС‚РѕСЂ СЃРѕРѕР±С‰РёС‚ РѕР± РѕС€РёР±РєРµ
 
 ) 
 { // 
-    // Создаю класс окна
-    const wchar_t* CLASS_NAME = L"Main";  // L префикс для широких символов
-    WNDCLASSEX wc = {}; // вся структура для регистрации класса окна инициализирована нулями
+    // РЎРѕР·РґР°СЋ РєР»Р°СЃСЃ РѕРєРЅР°
+    const wchar_t* CLASS_NAME = L"Main";  // L РїСЂРµС„РёРєСЃ РґР»СЏ С€РёСЂРѕРєРёС… СЃРёРјРІРѕР»РѕРІ
+    WNDCLASSEX wc = {}; // РІСЃСЏ СЃС‚СЂСѓРєС‚СѓСЂР° РґР»СЏ СЂРµРіРёСЃС‚СЂР°С†РёРё РєР»Р°СЃСЃР° РѕРєРЅР° РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅР° РЅСѓР»СЏРјРё
 
-    // то что нужно настроить более явно пишу тут:
-    wc.cbSize = sizeof(WNDCLASSEX); // размеры класса, так и не понял зачем
-    wc.lpfnWndProc = WndProc; // какой обработчик испоьзовать
-    wc.hInstance = hInstance; // дескриптор приложения
-    wc.hCursor = NULL; // скрываю курсор
-    wc.lpszClassName = CLASS_NAME;  // имя используемого класса
+    // С‚Рѕ С‡С‚Рѕ РЅСѓР¶РЅРѕ РЅР°СЃС‚СЂРѕРёС‚СЊ Р±РѕР»РµРµ СЏРІРЅРѕ РїРёС€Сѓ С‚СѓС‚:
+    wc.cbSize = sizeof(WNDCLASSEX); // СЂР°Р·РјРµСЂС‹ РєР»Р°СЃСЃР°, С‚Р°Рє Рё РЅРµ РїРѕРЅСЏР» Р·Р°С‡РµРј
+    wc.lpfnWndProc = WndProc; // РєР°РєРѕР№ РѕР±СЂР°Р±РѕС‚С‡РёРє РёСЃРїРѕСЊР·РѕРІР°С‚СЊ
+    wc.hInstance = hInstance; // РґРµСЃРєСЂРёРїС‚РѕСЂ РїСЂРёР»РѕР¶РµРЅРёСЏ
+    wc.hCursor = NULL; // СЃРєСЂС‹РІР°СЋ РєСѓСЂСЃРѕСЂ
+    wc.lpszClassName = CLASS_NAME;  // РёРјСЏ РёСЃРїРѕР»СЊР·СѓРµРјРѕРіРѕ РєР»Р°СЃСЃР°
 
-    // Регистрирую класс окна
-    //RegisterClassEx(&wc); // хз нужна ли здесь проверка на создание класса через мэссэджбокс
+    // Р РµРіРёСЃС‚СЂРёСЂСѓСЋ РєР»Р°СЃСЃ РѕРєРЅР°
+    //RegisterClassEx(&wc); // С…Р· РЅСѓР¶РЅР° Р»Рё Р·РґРµСЃСЊ РїСЂРѕРІРµСЂРєР° РЅР° СЃРѕР·РґР°РЅРёРµ РєР»Р°СЃСЃР° С‡РµСЂРµР· РјСЌСЃСЃСЌРґР¶Р±РѕРєСЃ
 
-    if (!RegisterClassEx(&wc)) { // оказалась нужна 
-        MessageBox(NULL, L"Ошибка регистрации класса окна!", L"Ошибка", MB_ICONERROR);
+    if (!RegisterClassEx(&wc)) { // РѕРєР°Р·Р°Р»Р°СЃСЊ РЅСѓР¶РЅР° 
+        MessageBox(NULL, L"РћС€РёР±РєР° СЂРµРіРёСЃС‚СЂР°С†РёРё РєР»Р°СЃСЃР° РѕРєРЅР°!", L"РћС€РёР±РєР°", MB_ICONERROR);
         return 0;
     }
 
-    window.width = GetSystemMetrics(SM_CXSCREEN); // эти переменные укажем в размер окна 
+    window.width = GetSystemMetrics(SM_CXSCREEN); // СЌС‚Рё РїРµСЂРµРјРµРЅРЅС‹Рµ СѓРєР°Р¶РµРј РІ СЂР°Р·РјРµСЂ РѕРєРЅР° 
     window.height = GetSystemMetrics(SM_CYSCREEN);
 
     window.hwnd = CreateWindowEx(0, CLASS_NAME, L"Arcanoid", WS_POPUP | WS_MAXIMIZE, 0, 0, window.width, window.height, NULL, NULL, hInstance, NULL);
 
-    if (!window.hwnd) { // проверка на создание окна 
+    if (!window.hwnd) { // РїСЂРѕРІРµСЂРєР° РЅР° СЃРѕР·РґР°РЅРёРµ РѕРєРЅР° 
 
         MessageBox(
-            NULL, // здесь дескриптор окна,NULL значит что нет родитльеского
-            L"Ошибка создания окна!", // текст сообщения 
-            L"Ошибка", // заголовк окна 
-            MB_ICONERROR // флаг который задает отображение окна с кнопкой ок и иконокой ошибки
+            NULL, // Р·РґРµСЃСЊ РґРµСЃРєСЂРёРїС‚РѕСЂ РѕРєРЅР°,NULL Р·РЅР°С‡РёС‚ С‡С‚Рѕ РЅРµС‚ СЂРѕРґРёС‚Р»СЊРµСЃРєРѕРіРѕ
+            L"РћС€РёР±РєР° СЃРѕР·РґР°РЅРёСЏ РѕРєРЅР°!", // С‚РµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ 
+            L"РћС€РёР±РєР°", // Р·Р°РіРѕР»РѕРІРє РѕРєРЅР° 
+            MB_ICONERROR // С„Р»Р°Рі РєРѕС‚РѕСЂС‹Р№ Р·Р°РґР°РµС‚ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ РѕРєРЅР° СЃ РєРЅРѕРїРєРѕР№ РѕРє Рё РёРєРѕРЅРѕРєРѕР№ РѕС€РёР±РєРё
         );
-        return 0; // возвращаем нольб, заверщшаем программу 
+        return 0; // РІРѕР·РІСЂР°С‰Р°РµРј РЅРѕР»СЊР±, Р·Р°РІРµСЂС‰С€Р°РµРј РїСЂРѕРіСЂР°РјРјСѓ 
 
     }
 
-    // эти функции идут всегда в паре и нужны чтобы управлять видимостью окна 
-    // и оптимизировать процесс отрисовку
-    // однако если использовать стиль WS_VISIBLE, то их применение не обязателно 
+    // СЌС‚Рё С„СѓРЅРєС†РёРё РёРґСѓС‚ РІСЃРµРіРґР° РІ РїР°СЂРµ Рё РЅСѓР¶РЅС‹ С‡С‚РѕР±С‹ СѓРїСЂР°РІР»СЏС‚СЊ РІРёРґРёРјРѕСЃС‚СЊСЋ РѕРєРЅР° 
+    // Рё РѕРїС‚РёРјРёР·РёСЂРѕРІР°С‚СЊ РїСЂРѕС†РµСЃСЃ РѕС‚СЂРёСЃРѕРІРєСѓ
+    // РѕРґРЅР°РєРѕ РµСЃР»Рё РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ СЃС‚РёР»СЊ WS_VISIBLE, С‚Рѕ РёС… РїСЂРёРјРµРЅРµРЅРёРµ РЅРµ РѕР±СЏР·Р°С‚РµР»РЅРѕ 
     InitWindow();
 
     ShowWindow(window.hwnd, SW_SHOW);
     UpdateWindow(window.hwnd);
 
-    MSG msg = {}; // структур дял хранения сообщений  
+    MSG msg = {}; // СЃС‚СЂСѓРєС‚СѓСЂ РґСЏР» С…СЂР°РЅРµРЅРёСЏ СЃРѕРѕР±С‰РµРЅРёР№  
 
-    // GeMassage() извлекает сообщения из очереди 
-    // цикл будет работать до тех пор пока в очередь не поступит WM_QUIT
+    // GeMassage() РёР·РІР»РµРєР°РµС‚ СЃРѕРѕР±С‰РµРЅРёСЏ РёР· РѕС‡РµСЂРµРґРё 
+    // С†РёРєР» Р±СѓРґРµС‚ СЂР°Р±РѕС‚Р°С‚СЊ РґРѕ С‚РµС… РїРѕСЂ РїРѕРєР° РІ РѕС‡РµСЂРµРґСЊ РЅРµ РїРѕСЃС‚СѓРїРёС‚ WM_QUIT
 
     while (GetMessage(&msg, NULL, 0, 0)) {
 
-        TranslateMessage(&msg); // обрабатывает ввод клавиш и преобразует его в сообщения 
-        DispatchMessage(&msg); // передает сообщения в обработчик
+        TranslateMessage(&msg); // РѕР±СЂР°Р±Р°С‚С‹РІР°РµС‚ РІРІРѕРґ РєР»Р°РІРёС€ Рё РїСЂРµРѕР±СЂР°Р·СѓРµС‚ РµРіРѕ РІ СЃРѕРѕР±С‰РµРЅРёСЏ 
+        DispatchMessage(&msg); // РїРµСЂРµРґР°РµС‚ СЃРѕРѕР±С‰РµРЅРёСЏ РІ РѕР±СЂР°Р±РѕС‚С‡РёРє
 
     }
 }
 
-// Обработка сообщений
+// РћР±СЂР°Р±РѕС‚РєР° СЃРѕРѕР±С‰РµРЅРёР№
 LRESULT CALLBACK WndProc(
 
-    // LRESULT для возврата результата обработки сообщения
-    // CALLBACK - соглашение о вызове функций 
-    // "Когда придет посылка (событие), распакуй ее вот по этой схеме (функция CALLBACK)".
-    // Система работает так же: когда происходит событие она ище инструкцию-обработчик и выполняет ее
+    // LRESULT РґР»СЏ РІРѕР·РІСЂР°С‚Р° СЂРµР·СѓР»СЊС‚Р°С‚Р° РѕР±СЂР°Р±РѕС‚РєРё СЃРѕРѕР±С‰РµРЅРёСЏ
+    // CALLBACK - СЃРѕРіР»Р°С€РµРЅРёРµ Рѕ РІС‹Р·РѕРІРµ С„СѓРЅРєС†РёР№ 
+    // "РљРѕРіРґР° РїСЂРёРґРµС‚ РїРѕСЃС‹Р»РєР° (СЃРѕР±С‹С‚РёРµ), СЂР°СЃРїР°РєСѓР№ РµРµ РІРѕС‚ РїРѕ СЌС‚РѕР№ СЃС…РµРјРµ (С„СѓРЅРєС†РёСЏ CALLBACK)".
+    // РЎРёСЃС‚РµРјР° СЂР°Р±РѕС‚Р°РµС‚ С‚Р°Рє Р¶Рµ: РєРѕРіРґР° РїСЂРѕРёСЃС…РѕРґРёС‚ СЃРѕР±С‹С‚РёРµ РѕРЅР° РёС‰Рµ РёРЅСЃС‚СЂСѓРєС†РёСЋ-РѕР±СЂР°Р±РѕС‚С‡РёРє Рё РІС‹РїРѕР»РЅСЏРµС‚ РµРµ
 
-    HWND hwnd, // дескриптор (идентификатьор) окна
-    UINT msg, // числвой код события 
-    WPARAM wParam, // доп инфа о сообщзениях
-    LPARAM lParam // WPARAM (обработка клавиш), LPARAM (движение курсора)
+    HWND hwnd, // РґРµСЃРєСЂРёРїС‚РѕСЂ (РёРґРµРЅС‚РёС„РёРєР°С‚СЊРѕСЂ) РѕРєРЅР°
+    UINT msg, // С‡РёСЃР»РІРѕР№ РєРѕРґ СЃРѕР±С‹С‚РёСЏ 
+    WPARAM wParam, // РґРѕРї РёРЅС„Р° Рѕ СЃРѕРѕР±С‰Р·РµРЅРёСЏС…
+    LPARAM lParam // WPARAM (РѕР±СЂР°Р±РѕС‚РєР° РєР»Р°РІРёС€), LPARAM (РґРІРёР¶РµРЅРёРµ РєСѓСЂСЃРѕСЂР°)
 
 ) {
 
     switch (msg) {
 
-    case WM_CREATE: // здесь загрузка всех ресурсов при поздании окна 
+    case WM_CREATE: // Р·РґРµСЃСЊ Р·Р°РіСЂСѓР·РєР° РІСЃРµС… СЂРµСЃСѓСЂСЃРѕРІ РїСЂРё РїРѕР·РґР°РЅРёРё РѕРєРЅР° 
 
-        ShowCursor(FALSE); // скрыл курсор
-
-        window.hBack = (HBITMAP)LoadImageW(NULL, L"fon.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-        racket.hBitmap = (HBITMAP)LoadImageW(NULL, L"racket.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-        ball.hBitmap = (HBITMAP)LoadImageW(NULL, L"ball.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        InitGame();
+        ShowCursor(FALSE); // СЃРєСЂС‹Р» РєСѓСЂСЃРѕСЂ
 
         break;
 
-    case WM_PAINT:  // здесь будет вся отричовка в окне  
+    case WM_PAINT:  // Р·РґРµСЃСЊ Р±СѓРґРµС‚ РІСЃСЏ РѕС‚СЂРёС‡РѕРІРєР° РІ РѕРєРЅРµ  
     {   
         PAINTSTRUCT ps;
         window.hdc = BeginPaint(hwnd, &ps);
-        
         ShowGame();
-
         EndPaint(hwnd, &ps);
 
     }
 
         break;
-    
-    case WM_KEYDOWN: // обработка нажатий клавиш 
 
-        if (wParam == VK_ESCAPE) DestroyWindow(hwnd); // уничтожаем окно
+    case WM_TIMER:
+
+        switch (wParam)
+        {
+            SetTimer(hwnd, );
+
+
+
+
+            return 0;
+        }
+    
+    case WM_KEYDOWN: // РѕР±СЂР°Р±РѕС‚РєР° РЅР°Р¶Р°С‚РёР№ РєР»Р°РІРёС€ 
+
+        if (wParam == VK_ESCAPE) DestroyWindow(hwnd); // СѓРЅРёС‡С‚РѕР¶Р°РµРј РѕРєРЅРѕ
         if (wParam == VK_LEFT) racket.x -= racket.speed;
         if (wParam == VK_RIGHT) racket.x += racket.speed;
-        if (wParam == VK_SPACE) game.action = true;
+        if (wParam == VK_SPACE) 
+        { 
+            ball.x += ball.dx * ball.speed; 
+            ball.y -= ball.dy * ball.speed;
+        
+        }
         else ball.x = racket.x + (racket.widht - ball.widht) / 2.0f;
 
         InvalidateRect(hwnd, NULL, TRUE);
 
         break;
 
-    case WM_DESTROY: // при уничтожении окна посылаем сообщение WM_QUIT - завершает цикл сообщений. 
+
+    case WM_DESTROY: // РїСЂРё СѓРЅРёС‡С‚РѕР¶РµРЅРёРё РѕРєРЅР° РїРѕСЃС‹Р»Р°РµРј СЃРѕРѕР±С‰РµРЅРёРµ WM_QUIT - Р·Р°РІРµСЂС€Р°РµС‚ С†РёРєР» СЃРѕРѕР±С‰РµРЅРёР№. 
 
         DeleteObject(ball.hBitmap);
         DeleteObject(racket.hBitmap);
@@ -238,7 +283,7 @@ LRESULT CALLBACK WndProc(
         break;
 
 
-    default: // здесь обработка всех сообщений по умолчанию, если мы не написали как их обрабюатывать
+    default: // Р·РґРµСЃСЊ РѕР±СЂР°Р±РѕС‚РєР° РІСЃРµС… СЃРѕРѕР±С‰РµРЅРёР№ РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ, РµСЃР»Рё РјС‹ РЅРµ РЅР°РїРёСЃР°Р»Рё РєР°Рє РёС… РѕР±СЂР°Р±СЋР°С‚С‹РІР°С‚СЊ
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }
 }
