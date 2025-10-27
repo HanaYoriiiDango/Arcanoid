@@ -12,16 +12,22 @@ using namespace std;
 struct { // если делать через структуру
     HWND hwnd;
     HBITMAP hBack;
+    HDC hdc, mem_dc;
     int width, height;
 
 } window;
 
 struct sprite {
-    float x, y;
+    float x, y, speed;
     int widht, height;
     HBITMAP hBitmap;
 
 };
+
+struct {
+    bool action = false;
+
+} game;
 
 sprite ball;
 sprite racket;
@@ -34,24 +40,69 @@ void InitWindow() {
     window.width = r.right - r.left;
     window.height = r.bottom - r.top;
 
-    ball.x = 100;
-    ball.y = 100;
+    float slow = 0.8f;
 
-    racket.x = 250;
-    racket.y = 250;
+    racket.widht = 300;
+    racket.height = 40;
+    racket.x = window.width / 2.0f; // ракетка ровно посередне экрана
+    racket.y = window.height - racket.height; // выше границы экрана на свою высоту
+    racket.speed = 20.0f * slow;
+
+    ball.widht = 40;
+    ball.height = 40;
+    ball.x = (window.width + racket.widht - ball.widht) / 2.0f; // половина экрана, половина ракетки с учетом ширины шарика
+    ball.y = racket.y - racket.height; // шарк выше ракетки на ее высоту
 
 }
 
-void ShowBmp(HDC hdc, HDC memDC, sprite Object) {
 
-    BITMAP bmp;
-    GetObject(Object.hBitmap, sizeof(BITMAP), &bmp);
+void ShowSprite(sprite Object) {
+
+    HDC memDC = CreateCompatibleDC(window.mem_dc);
+    HBITMAP hold = (HBITMAP)SelectObject(memDC, Object.hBitmap);
 
     if (Object.hBitmap) {
 
-        TransparentBlt(hdc, Object.x, Object.y, Object.widht, Object.height, memDC, 0, 0, Object.widht, Object.height, RGB(0, 0, 0));
         // пиксели черного цвета будут прозрачными 
+        TransparentBlt(window.hdc, Object.x, Object.y, Object.widht, Object.height, memDC, 0, 0, Object.widht, Object.height, RGB(0, 0, 0));
+
     }
+
+    SelectObject(memDC, hold);
+
+    DeleteObject(hold);
+    DeleteDC(memDC);
+    ReleaseDC(window.hwnd, memDC);
+}
+
+void ShowBack() {
+
+    HBITMAP hOld;
+
+    BITMAP bmp;
+    GetObject(window.hBack, sizeof(BITMAP), &bmp);
+
+    window.mem_dc = CreateCompatibleDC(window.hdc);
+    hOld = (HBITMAP)SelectObject(window.mem_dc, window.hBack);
+
+    StretchBlt(window.hdc, 0, 0, window.width, window.height, window.mem_dc, 0, 0, bmp.bmWidth, bmp.bmHeight, SRCCOPY);
+
+    ShowBmp(racket);
+    ShowBmp(ball);
+
+    SelectObject(window.mem_dc, hOld); // если закомментить все равно работает 
+
+    DeleteObject(hOld);
+    DeleteDC(window.mem_dc);
+    ReleaseDC(hwnd, window.mem_dc);
+
+}
+
+void ShowGame() {
+
+
+
+
 }
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM); // просто объявление функции
@@ -145,34 +196,20 @@ LRESULT CALLBACK WndProc(
 
     case WM_CREATE: // здесь загрузка всех ресурсов при поздании окна 
 
+        ShowCursor(FALSE); // скрыл курсор
+
         window.hBack = (HBITMAP)LoadImageW(NULL, L"fon.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-        ball.hBitmap = (HBITMAP)LoadImageW(NULL, L"ball.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
         racket.hBitmap = (HBITMAP)LoadImageW(NULL, L"racket.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        ball.hBitmap = (HBITMAP)LoadImageW(NULL, L"ball.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
         break;
 
     case WM_PAINT:  // здесь будет вся отричовка в окне  
     {   
         PAINTSTRUCT ps;
-        HDC hdc = BeginPaint(hwnd, &ps);
-        HDC mem_dc;
-        HBITMAP hOld;
-        BITMAP bm;
-
-        GetObject(window.hBack, sizeof(BITMAP), &bm);
-
-        mem_dc = CreateCompatibleDC(hdc);
-        hOld = (HBITMAP)SelectObject(mem_dc, window.hBack);
-
-        StretchBlt(hdc, 0, 0, window.width, window.height, mem_dc, 0, 0, bm.bmWidth, bm.bmHeight, SRCCOPY);
-
-        ShowBmp(hdc, mem_dc, racket);
-        ShowBmp(hdc, mem_dc, ball);
-
-        SelectObject(mem_dc, hOld); // если закомментить все равно работает 
-
-        DeleteObject(hOld);
-        DeleteDC(mem_dc);
+        window.hdc = BeginPaint(hwnd, &ps);
+        
+        ShowGame();
 
         EndPaint(hwnd, &ps);
 
@@ -183,9 +220,20 @@ LRESULT CALLBACK WndProc(
     case WM_KEYDOWN: // обработка нажатий клавиш 
 
         if (wParam == VK_ESCAPE) DestroyWindow(hwnd); // уничтожаем окно
+        if (wParam == VK_LEFT) racket.x -= racket.speed;
+        if (wParam == VK_RIGHT) racket.x += racket.speed;
+        if (wParam == VK_SPACE) game.action = true;
+        else ball.x = racket.x + (racket.widht - ball.widht) / 2.0f;
+
+        InvalidateRect(hwnd, NULL, TRUE);
+
+        break;
 
     case WM_DESTROY: // при уничтожении окна посылаем сообщение WM_QUIT - завершает цикл сообщений. 
 
+        DeleteObject(ball.hBitmap);
+        DeleteObject(racket.hBitmap);
+        DeleteObject(window.hBack);
         PostQuitMessage(0);
         break;
 
