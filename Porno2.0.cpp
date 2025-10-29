@@ -56,13 +56,13 @@ void InitGame() {
     ball.hBitmap = (HBITMAP)LoadImageW(NULL, L"ball.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     auto bmpBlock = (HBITMAP)LoadImageW(NULL, L"kotek.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
-    float slow = 0.8f;
+    float slow = 0.4f;
 
     racket.widht = 300;
     racket.height = 40;
     racket.x = window.width / 2.0f; // ракетка ровно посередне экрана
     racket.y = window.height - racket.height; // выше границы экрана на свою высоту
-    racket.speed = 20.0f * slow;
+    racket.speed = 40.0f * slow;
 
     ball.widht = 40;
     ball.height = 40;
@@ -127,8 +127,11 @@ void ShowObject() {
     for (int i = 0; i < line; i++) {
         for (int j = 0; j < column; j++) {
 
-            ShowSprite(block[i][j].x, block[i][j].y, block[i][j].widht, block[i][j].height, block[i][j].hBitmap, true);
+            if (block[i][j].active) {
 
+                ShowSprite(block[i][j].x, block[i][j].y, block[i][j].widht, block[i][j].height, block[i][j].hBitmap, true);
+
+            }
         }
     }
 }
@@ -183,11 +186,53 @@ void CheckRacket() {
 
     if (ball.y + ball.rad >= racket.y) {
 
-        if (ball.x > racket.x && ball.x < racket.x + racket.widht) {
+        if (ball.x >= racket.x && ball.x <= racket.x + racket.widht) {
 
             ball.dy *= -1.0f;
             
         }
+    }
+}
+
+void CollisionBlock() {
+
+    for (int i = 0; i < line; i++) {
+        for (int j = 0; j < column; j++) {
+
+            if (block[i][j].active) {
+
+                if (ball.x + ball.rad >= block[i][j].x && 
+                    ball.x - ball.rad <= block[i][j].x + block[i][j].widht &&
+                    ball.y + ball.rad >= block[i][j].y && 
+                    ball.y - ball.rad <= block[i][j].y + block[i][j].height) {
+
+                    float minLeft = (ball.x + ball.rad) - block[i][j].x;
+                    float minRight = (block[i][j].x + block[i][j].widht) - (ball.x - ball.rad);
+                    float minTop = (ball.y + ball.rad) - block[i][j].y;
+                    float minBottom = (block[i][j].y + block[i][j].height) - (ball.y - ball.rad);
+
+                    float X = min(minLeft, minRight);
+                    float Y = min(minTop, minBottom);
+
+                    if (X > Y) ball.dy *= -1;
+                    else ball.dx *= -1;
+
+                    block[i][j].active = false;
+                    
+                }
+            }
+        }
+    }
+}
+
+void CheckEndGame() {
+
+    if (ball.y + ball.rad > window.height) {
+
+        game.action = false;
+        ball.x = racket.x + (racket.widht - ball.widht) / 2.0f;
+        ball.y = racket.y - racket.height;
+
     }
 }
 
@@ -304,6 +349,8 @@ LRESULT CALLBACK WndProc(
         ProcessGame();
         CheckWalls();
         CheckRacket();
+        CollisionBlock();
+        CheckEndGame();
         InvalidateRect(hwnd, NULL, FALSE);
     }
 
