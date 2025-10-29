@@ -163,6 +163,13 @@ void ProcessGame() {
 
 }
 
+void LimitRacket() {
+
+    racket.x = max(racket.x, window.width - racket.widht / 2.0f);
+    racket.x = min(racket.x, 0 + racket.widht);
+
+}
+
 void CheckWalls() {
 
     //ball.dx = ball.dx * -1; // если умножать вектор на число, то меняется его длина 
@@ -196,10 +203,51 @@ void CheckRacket() {
 
 void CollisionBlock() {
 
+    /*bool collisionHandled = false; // Флаг для отслеживания, было ли обработано столкновение
     for (int i = 0; i < line; i++) {
         for (int j = 0; j < column; j++) {
 
-            if (block[i][j].active) {
+            if (block[i][j].active && !collisionHandled) { // Проверяем только если столкновение ещё не обработано
+
+                if (ball.x + ball.rad >= block[i][j].x && ball.x - ball.rad <= block[i][j].x + block[i][j].widht &&
+                    ball.y + ball.rad >= block[i][j].y && ball.y - ball.rad <= block[i][j].y + block[i][j].height) {
+
+                    // Определяем, с какой стороны произошло столкновение
+                    float overlapLeft = (ball.x + ball.rad) - block[i][j].x; // расстояние до левой стороны блока
+                    float overlapRight = (block[i][j].x + block[i][j].widht) - (ball.x - ball.rad); // расстояние до правой стороны блока
+                    float overlapTop = (ball.y + ball.rad) - block[i][j].y; // расстояние до верхней стороны блока
+                    float overlapBottom = (block[i][j].y + block[i][j].height) - (ball.y - ball.rad); // расстояние до нижней стороны блока
+
+                    // Находим минимальное перекрытие вручную
+                    float minOverlap = overlapLeft; // Предполагаем, что минимальное значение — overlapLeft
+                    if (overlapRight < minOverlap) minOverlap = overlapRight;
+                    if (overlapTop < minOverlap) minOverlap = overlapTop;
+                    if (overlapBottom < minOverlap) minOverlap = overlapBottom;
+
+                    // Изменяем направление мяча в зависимости от стороны столкновения
+                    if (minOverlap == overlapLeft || minOverlap == overlapRight) {
+                        
+                        ball.dx = -ball.dx; // Отскок по горизонтали
+                    }
+                    else {
+                        
+                        ball.dy = -ball.dy; // Отскок по вертикали
+                    }
+
+                    collisionHandled = true; // Столкновение обработано, больше не проверяем другие блоки
+                    block[i][j].active = false; // Деактивируем блок
+                    return;
+                }
+            }
+        }
+    }*/
+
+    bool collision = true;
+
+    for (int i = 0; i < line; i++) {
+        for (int j = 0; j < column; j++) {
+
+            if (block[i][j].active && collision) {
 
                 if (ball.x + ball.rad >= block[i][j].x && 
                     ball.x - ball.rad <= block[i][j].x + block[i][j].widht &&
@@ -211,14 +259,15 @@ void CollisionBlock() {
                     float minTop = (ball.y + ball.rad) - block[i][j].y;
                     float minBottom = (block[i][j].y + block[i][j].height) - (ball.y - ball.rad);
 
-                    float X = min(minLeft, minRight);
+                    float X = max(minLeft, minRight);
                     float Y = min(minTop, minBottom);
 
-                    if (X > Y) ball.dy *= -1;
-                    else ball.dx *= -1;
+                    if (X < Y) ball.dx *= -1;
+                    else ball.dy *= -1;
 
                     block[i][j].active = false;
-                    
+                    collision = false;
+
                 }
             }
         }
@@ -232,6 +281,8 @@ void CheckEndGame() {
         game.action = false;
         ball.x = racket.x + (racket.widht - ball.widht) / 2.0f;
         ball.y = racket.y - racket.height;
+        ball.dy = (rand() % 65 + 35) / 100.0f; // здесь будут значения от 0.35 до 0.99
+        ball.dx = abs(1 - ball.dy); // нормализуем второй вектор относительно первого 
 
     }
 }
@@ -347,6 +398,7 @@ LRESULT CALLBACK WndProc(
     case WM_TIMER: 
     {
         ProcessGame();
+        LimitRacket();
         CheckWalls();
         CheckRacket();
         CollisionBlock();
