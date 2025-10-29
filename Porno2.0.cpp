@@ -143,13 +143,12 @@ void ShowGame() {
     HBITMAP hOldBmp = (HBITMAP)SelectObject(window.mem_dc, hMemBmp);
 
     ShowObject();
-    
-    for (int i = 0; i < ball.speed; i++) {
+    for (int i = 0; i < 6; i++ ) {
+        for (int j = 0; j < ball.speed * 4; j++) {
        
-        SetPixel(window.mem_dc, ball.x + (ball.dx * i), ball.y + (ball.dy * i), RGB(0, 0, 0));
-        //SetPixel(window.mem_dc, 150 + i, 150 + j, RGB(0, 0, 0));
+            SetPixel(window.mem_dc, (ball.x + ball.rad) + (ball.dx * j), (ball.y - i) + (ball.dy * -(j)), RGB(0, 0, 0));
 
-      
+        }
     }
 
     BitBlt(window.hdc, 0, 0, window.width, window.height, window.mem_dc, 0, 0, SRCCOPY);
