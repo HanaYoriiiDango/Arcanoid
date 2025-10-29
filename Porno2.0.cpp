@@ -169,14 +169,25 @@ void CheckWalls() {
 
     if (ball.x <= 0 || ball.x + ball.rad >= window.width) { // столкновение с боками, меняем только x
 
-        ball.dx *= -1;
+        ball.dx *= -1.0f;
 
     }
     else if (ball.y <= 0) { // столкновение с верхней стенкой - меняем y
 
-        ball.dy *= -1;
+        ball.dy *= -1.0f;
 
+    }
+}
 
+void CheckRacket() {
+
+    if (ball.y + ball.rad >= racket.y) {
+
+        if (ball.x > racket.x && ball.x < racket.x + racket.widht) {
+
+            ball.dy *= -1.0f;
+            
+        }
     }
 }
 
@@ -292,6 +303,7 @@ LRESULT CALLBACK WndProc(
     {
         ProcessGame();
         CheckWalls();
+        CheckRacket();
         InvalidateRect(hwnd, NULL, FALSE);
     }
 
