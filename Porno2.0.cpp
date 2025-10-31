@@ -27,6 +27,15 @@ struct sprite {
 
 };
 
+struct Ray_ {
+    float pointX, pointY; // начало отрисовки луча
+    float percentage; // процент удаленности от начальной точки
+    float length; // длина луча
+    float dx, dy; // 
+    float reflectX, reflectY;
+
+};
+
 struct {
     bool action = false;
 
@@ -36,6 +45,7 @@ const int line = 15, column = 7;
 sprite ball;
 sprite racket;
 sprite block[line][column];
+Ray_ Ray;
 
 POINT p;
 
@@ -73,7 +83,7 @@ void InitGame() {
 
     //ball.x = (window.width + racket.widht - ball.widht) / 2.0f; // половина экрана, половина ракетки с учетом ширины шарика
     //ball.y = racket.y - racket.height; // шарк выше ракетки на ее высоту
-    ball.speed = 200; // длина вектора фиксирована
+    ball.speed = 150; // длина вектора фиксирована
     //ball.speed = (sqrt((ball.x * ball.x) + (ball.y * ball.y))); // длина вектора
     /*
         Длина вектора (по сути она же скорость) - это модуль расстояния на которое сдвигается
@@ -140,6 +150,72 @@ void ShowObject() {
     }
 }
 
+void ShowRay() { // рисую луч отдельно, чтобы избежать конфликтов во времени исполнения кейсов
+
+    /*
+   2 главных условия для коллизии:
+   1) Nx < Fx;
+   2) Ny < Fx;
+   */
+
+   Ray.length = ball.speed; // длина вектора шарика 
+   Ray.pointX = ball.x; // середина шарика (начало отрисовки луча)
+   Ray.pointY = ball.y;
+   Ray.reflectX = ball.dx; // вектор отражения луча
+   Ray.reflectY = ball.dy;
+
+  for (int i = 0; i < Ray.length; i++) {
+       for (int j = 0; j < line; j++) {
+           for (int k = 0; k < column; k++) {
+
+               Ray.percentage = i / Ray.length; // сколько занимает пиксель в процентном соотношение по длине всего вектора
+               // y = ax + b — формула линейной функции: x — переменная, a и b — параметры (любые числа)
+               // y = ax + b ---> // Pend = Pstart + RayLength * % удаленности от Pstart
+               Ray.dx = Ray.pointX + (Ray.reflectX * Ray.length) * Ray.percentage;
+               Ray.dy = Ray.pointY + (Ray.reflectY * Ray.length) * Ray.percentage;
+
+               SetPixel(window.mem_dc, Ray.dx, Ray.dy, RGB(0, 0, 0));
+
+               if (Ray.dx <= block[j][k].x + block[j][k].widht &&
+                   Ray.dx >= block[j][k].x &&
+                   Ray.dy <= block[j][k].y + block[j][k].height &&
+                   Ray.dy >= block[j][k].y) {
+
+                   float minLeft = Ray.dx - block[j][k].x;
+                   float minRight = (block[j][k].x + block[j][k].widht) - Ray.dx;
+                   float minTop = Ray.dy - block[j][k].y;
+                   float minBottom = (block[j][k].y + block[j][k].height) - Ray.dy;
+
+                   float minX = min(minLeft, minRight);
+                   float minY = min(minTop, minBottom);
+
+                /*
+                 2 главных условия для коллизии:
+                 1) Nx < Fx;
+                 2) Ny < Fx;
+                 */
+                    
+                   float newDX = Ray.dx - ball.x;
+                   float newDY = Ray.dy - ball.y;
+
+
+                  if (minX < minY) {
+
+                      Ray.pointX = Ray.dx + newDX;
+                       Ray.reflectX = -Ray.reflectX;
+                   }
+                   else {
+
+                       Ray.pointY = Ray.dy + newDY;
+                       Ray.reflectY = -Ray.reflectY;
+
+                   }
+               }
+           }
+       }
+   }
+}
+
 void ShowGame() {
 
     window.mem_dc = CreateCompatibleDC(window.hdc);
@@ -147,8 +223,7 @@ void ShowGame() {
     HBITMAP hOldBmp = (HBITMAP)SelectObject(window.mem_dc, hMemBmp);
 
     ShowObject();
-
-    
+    ShowRay();
 
     BitBlt(window.hdc, 0, 0, window.width, window.height, window.mem_dc, 0, 0, SRCCOPY);
 
@@ -209,79 +284,7 @@ void CheckRacket() {
 
 void CollisionBlock() {
 
-    bool collision = true;
-    float s, pointx, pointy, ddx, ddy, nx, ny;
-
-    for (int i = 0; i < line; i++) {
-        for (int j = 0; j < column; j++) {
-            for (float k = 0; k < ball.speed; k++) {
-
-                s = k / ball.speed;
-                pointx = ball.x + (ball.rad / 2.0f);
-                pointy = ball.y + (ball.rad / 2.0f);
-                ddx = ball.dx * ball.speed;
-                ddy = ball.dy * ball.speed;
-                nx = pointx + ddx * s;
-                ny = pointy + ddy * s;
-
-                SetPixel(window.mem_dc, nx, ny, RGB(252, 15, 192));
-
-                if (nx >= block[i][j].x &&
-                    nx <= block[i][j].x + block[i][j].widht &&
-                    ny >= block[i][j].y &&
-                    ny <= block[i][j].y + block[i][j].height) {
-
-                    float minLeft = block[i][j].x - pointx;
-                    float minRight = (block[i][j].x + block[i][j].widht) - pointx;
-                    float minTop = block[i][j].y - pointy;
-                    float minBottom = (block[i][j].y + block[i][j].height) - pointy;
-
-                    float z = ddx - pointx;
-                    float w = ddy - pointy;
-
-                    float X = min(minLeft, minRight);
-                    float Y = min(minTop, minBottom);
-
-                    if (X < Y) {
-                    
-                        pointx = ddx + z;
-                        ball.dx = -ball.dx;
-                    
-                    
-                    }
-                    else {
-                    
-                        pointy = ddy + w;
-                        ball.dy = -ball.dy;
-                    
-                    
-                    };
-
-                }
-            }
-        }
-    }
-
-            //if (block[i][j].active && collision) {
-
-            //        float minLeft = block[i][j].x - (ball.x + ball.rad);
-            //        float minRight = (block[i][j].x + block[i][j].widht) - ball.x;
-            //        float minTop = block[i][j].y - (ball.y + ball.rad);
-            //        float minBottom = (block[i][j].y + block[i][j].height) - ball.y;
-
-            //        float X = min(minLeft, minRight);
-            //        float Y = min(minTop, minBottom);
-
-            //        if (X < Y) ball.dx *= -1;
-            //        else ball.dy *= -1;
-
-            //        //block[i][j].active = false;
-            //        collision = false;
-
-            //    }
-    //        //}
-    //    }
-    //}
+   
 }
 
 void CheckEndGame() {
