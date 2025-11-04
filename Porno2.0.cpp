@@ -140,6 +140,11 @@ void ShowObject() {
 
     for (int i = 0; i < line; i++) {
         for (int j = 0; j < column; j++) {
+            
+            block[3][4].active = false;
+            block[3][3].active = false;
+            block[4][3].active = false;
+            block[4][4].active = false;
 
             if (block[i][j].active) {
 
@@ -151,18 +156,35 @@ void ShowObject() {
 }
 
 void ShowRay() { // рисую луч отдельно, чтобы избежать конфликтов во времени исполнения кейсов
+    
+    vector <Ray_> rays;
 
-    /*
-   2 главных условия для коллизии:
-   1) Nx < Fx;
-   2) Ny < Fx;
-   */
+    int RaysPositionX[5] = {
+        
+    
+    
+    
+    
+    };
+
+    int RaysPositionY[5] = {
+
+
+
+
+
+    };
 
    Ray.length = ball.speed; // длина вектора шарика 
-   Ray.pointX = ball.x; // середина шарика (начало отрисовки луча)
-   Ray.pointY = ball.y;
+   Ray.pointX = ball.x + (ball.rad / 2.0); // середина шарика (начало отрисовки луча)
+   Ray.pointY = ball.y + (ball.rad / 2.0);
    Ray.reflectX = ball.dx; // вектор отражения луча
    Ray.reflectY = ball.dy;
+
+   char txt[32];
+   float current_angle = atan2(-Ray.reflectY, Ray.reflectX) * 180.0f / 3.14159265f; // находим угол, преобразуем в градусы
+   sprintf_s(txt, "Angle: %.1f", current_angle);  // для float
+   TextOutA(window.mem_dc, 10, 10, txt, strlen(txt));
 
   for (int i = 0; i < Ray.length; i++) {
        for (int j = 0; j < line; j++) {
@@ -189,27 +211,29 @@ void ShowRay() { // рисую луч отдельно, чтобы избежа�
                    float minX = min(minLeft, minRight);
                    float minY = min(minTop, minBottom);
 
-                /*
-                 2 главных условия для коллизии:
-                 1) Nx < Fx;
-                 2) Ny < Fx;
-                 */
+                   float newDX = Ray.dx + ball.x;
+                   float newDY = Ray.dy + ball.y;
                     
-                   float newDX = Ray.dx - ball.x;
-                   float newDY = Ray.dy - ball.y;
-
-
                   if (minX < minY) {
 
-                      Ray.pointX = Ray.dx + newDX;
-                       Ray.reflectX = -Ray.reflectX;
-                   }
-                   else {
+                      Ray.reflectX = -Ray.reflectX; // отражаем вектор
+                      Ray.pointX = Ray.dx; // рисуем луч с новой точки
+                      Ray.pointY = Ray.dy;
+                      Ray.length = Ray.length - i; // длина луча пересчитывается как бы в обратную сторону
+                      i = 0; // Начинаем заново
 
-                       Ray.pointY = Ray.dy + newDY;
-                       Ray.reflectY = -Ray.reflectY;
+                  }
+                  else {
+                      Ray.reflectY = -Ray.reflectY; // отражение
+                      Ray.pointX = Ray.dx; // рисуем с новой точки (столкновения)
+                      Ray.pointY = Ray.dy;
+                      Ray.length = Ray.length - i; // пересчитываем
+                      i = 0; // начинаем снова с нуля
+                  }
 
-                   }
+                  // Выходим из циклов после первого столкновения
+                  j = line;
+                  k = column;
                }
            }
        }
@@ -298,6 +322,34 @@ void CheckEndGame() {
         ball.dx = abs(1 - ball.dy); // нормализуем второй вектор относительно первого 
 
     }
+}
+
+void ProcessInput(WPARAM wParam) {
+
+    if (wParam == VK_ESCAPE) DestroyWindow(window.hwnd); // уничтожаем окно
+    if (wParam == VK_LEFT) racket.x -= racket.speed;
+    if (wParam == VK_RIGHT) racket.x += racket.speed;
+    if (wParam == VK_SPACE) game.action = true;
+
+}
+
+void ProcessGame() {
+
+    //ProcessBall();
+    LimitRacket();
+    CheckWalls();
+    CheckRacket();
+    CollisionBlock();
+    CheckEndGame();
+
+}
+
+void ClearGame() {
+
+    DeleteObject(ball.hBitmap);
+    DeleteObject(racket.hBitmap);
+    DeleteObject(window.hBack);
+
 }
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM); // просто объявление функции
@@ -413,12 +465,8 @@ LRESULT CALLBACK WndProc(
         GetCursorPos(&p);
         ball.x = p.x;
         ball.y = p.y;
-        //ProcessBall();
-        LimitRacket();
-        CheckWalls();
-        CheckRacket();
-        CollisionBlock();
-        CheckEndGame();
+        
+        ProcessGame();
         InvalidateRect(hwnd, NULL, FALSE);
     }
 
@@ -426,10 +474,7 @@ LRESULT CALLBACK WndProc(
 
     case WM_KEYDOWN: // обработка нажатий клавиш 
 
-        if (wParam == VK_ESCAPE) DestroyWindow(hwnd); // уничтожаем окно
-        if (wParam == VK_LEFT) racket.x -= racket.speed;
-        if (wParam == VK_RIGHT) racket.x += racket.speed;
-        if (wParam == VK_SPACE) game.action = true;
+        ProcessInput(wParam);
         InvalidateRect(hwnd, NULL, TRUE);
 
         break;
@@ -437,9 +482,7 @@ LRESULT CALLBACK WndProc(
 
     case WM_DESTROY: // при уничтожении окна посылаем сообщение WM_QUIT - завершает цикл сообщений. 
 
-        DeleteObject(ball.hBitmap);
-        DeleteObject(racket.hBitmap);
-        DeleteObject(window.hBack);
+        ClearGame();
         KillTimer(hwnd, 1);
         PostQuitMessage(0);
         break;
