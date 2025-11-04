@@ -156,88 +156,72 @@ void ShowObject() {
 }
 
 void ShowRay() { // рисую луч отдельно, чтобы избежать конфликтов во времени исполнения кейсов
-    
-    vector <Ray_> rays;
-
-    int RaysPositionX[5] = {
-        
-    
-    
-    
-    
-    };
-
-    int RaysPositionY[5] = {
 
 
 
+    for (int p = 0; p < 1; p++) {
+    Ray.length = ball.speed; // длина вектора шарика 
+    Ray.pointX = ; // середина шарика (начало отрисовки луча)
+    Ray.pointY = ;
+    Ray.reflectX = ball.dx; // вектор отражения луча
+    Ray.reflectY = ball.dy;
+
+    // x1 = r * sin/cos(i) + x/y ball; 
 
 
-    };
+      for (int i = 0; i < Ray.length; i++) {
+           for (int j = 0; j < line; j++) {
+               for (int k = 0; k < column; k++) {
 
-   Ray.length = ball.speed; // длина вектора шарика 
-   Ray.pointX = ball.x + (ball.rad / 2.0); // середина шарика (начало отрисовки луча)
-   Ray.pointY = ball.y + (ball.rad / 2.0);
-   Ray.reflectX = ball.dx; // вектор отражения луча
-   Ray.reflectY = ball.dy;
+                   Ray.percentage = i / Ray.length; // сколько занимает пиксель в процентном соотношение по длине всего вектора
+                   // y = ax + b — формула линейной функции: x — переменная, a и b — параметры (любые числа)
+                   // y = ax + b ---> // Pend = Pstart + RayLength * % удаленности от Pstart
+                   Ray.dx = Ray.pointX + (Ray.reflectX * Ray.length) * Ray.percentage;
+                   Ray.dy = Ray.pointY + (Ray.reflectY * Ray.length) * Ray.percentage;
 
-   char txt[32];
-   float current_angle = atan2(-Ray.reflectY, Ray.reflectX) * 180.0f / 3.14159265f; // находим угол, преобразуем в градусы
-   sprintf_s(txt, "Angle: %.1f", current_angle);  // для float
-   TextOutA(window.mem_dc, 10, 10, txt, strlen(txt));
+                   SetPixel(window.mem_dc, Ray.dx, Ray.dy, RGB(42, 255, 0));
 
-  for (int i = 0; i < Ray.length; i++) {
-       for (int j = 0; j < line; j++) {
-           for (int k = 0; k < column; k++) {
+                   if (Ray.dx <= block[j][k].x + block[j][k].widht &&
+                       Ray.dx >= block[j][k].x &&
+                       Ray.dy <= block[j][k].y + block[j][k].height &&
+                       Ray.dy >= block[j][k].y && block[j][k].active) {
 
-               Ray.percentage = i / Ray.length; // сколько занимает пиксель в процентном соотношение по длине всего вектора
-               // y = ax + b — формула линейной функции: x — переменная, a и b — параметры (любые числа)
-               // y = ax + b ---> // Pend = Pstart + RayLength * % удаленности от Pstart
-               Ray.dx = Ray.pointX + (Ray.reflectX * Ray.length) * Ray.percentage;
-               Ray.dy = Ray.pointY + (Ray.reflectY * Ray.length) * Ray.percentage;
+                       float minLeft = Ray.dx - block[j][k].x;
+                       float minRight = (block[j][k].x + block[j][k].widht) - Ray.dx;
+                       float minTop = Ray.dy - block[j][k].y;
+                       float minBottom = (block[j][k].y + block[j][k].height) - Ray.dy;
 
-               SetPixel(window.mem_dc, Ray.dx, Ray.dy, RGB(0, 0, 0));
+                       float minX = min(minLeft, minRight);
+                       float minY = min(minTop, minBottom);
 
-               if (Ray.dx <= block[j][k].x + block[j][k].widht &&
-                   Ray.dx >= block[j][k].x &&
-                   Ray.dy <= block[j][k].y + block[j][k].height &&
-                   Ray.dy >= block[j][k].y) {
-
-                   float minLeft = Ray.dx - block[j][k].x;
-                   float minRight = (block[j][k].x + block[j][k].widht) - Ray.dx;
-                   float minTop = Ray.dy - block[j][k].y;
-                   float minBottom = (block[j][k].y + block[j][k].height) - Ray.dy;
-
-                   float minX = min(minLeft, minRight);
-                   float minY = min(minTop, minBottom);
-
-                   float newDX = Ray.dx + ball.x;
-                   float newDY = Ray.dy + ball.y;
+                       float newDX = Ray.dx + ball.x;
+                       float newDY = Ray.dy + ball.y;
                     
-                  if (minX < minY) {
+                      if (minX < minY) {
 
-                      Ray.reflectX = -Ray.reflectX; // отражаем вектор
-                      Ray.pointX = Ray.dx; // рисуем луч с новой точки
-                      Ray.pointY = Ray.dy;
-                      Ray.length = Ray.length - i; // длина луча пересчитывается как бы в обратную сторону
-                      i = 0; // Начинаем заново
+                          Ray.reflectX = -Ray.reflectX; // отражаем вектор
+                          Ray.pointX = Ray.dx; // рисуем луч с новой точки
+                          Ray.pointY = Ray.dy;
+                          Ray.length = Ray.length - i; // длина луча пересчитывается как бы в обратную сторону
+                          i = 0; // Начинаем заново
 
-                  }
-                  else {
-                      Ray.reflectY = -Ray.reflectY; // отражение
-                      Ray.pointX = Ray.dx; // рисуем с новой точки (столкновения)
-                      Ray.pointY = Ray.dy;
-                      Ray.length = Ray.length - i; // пересчитываем
-                      i = 0; // начинаем снова с нуля
-                  }
+                      }
+                      else {
+                          Ray.reflectY = -Ray.reflectY; // отражение
+                          Ray.pointX = Ray.dx; // рисуем с новой точки (столкновения)
+                          Ray.pointY = Ray.dy;
+                          Ray.length = Ray.length - i; // пересчитываем
+                          i = 0; // начинаем снова с нуля
+                      }
 
-                  // Выходим из циклов после первого столкновения
-                  j = line;
-                  k = column;
+                      // Выходим из циклов после первого столкновения
+                      j = line;
+                      k = column;
+                   }
                }
            }
-       }
-   }
+      }
+    }
 }
 
 void ShowGame() {
@@ -308,7 +292,34 @@ void CheckRacket() {
 
 void CollisionBlock() {
 
-   
+    Ray.length = ball.speed; // длина вектора шарика 
+    Ray.pointX = ball.x + (ball.rad / 2.0); // середина шарика (начало отрисовки луча)
+    Ray.pointY = ball.y + (ball.rad / 2.0);
+    Ray.reflectX = ball.dx; // вектор отражения луча
+    Ray.reflectY = ball.dy;
+
+    for (int i = 0; i < Ray.length; i++) {
+    
+        
+    
+    
+    
+    }
+
+    for (int i = 0; i < line; i++) {
+        for (int j = 0; j < column; j++) {
+
+            if (Ray.dx >= block[i][j].x && Ray.dx <= block[i][j].x + block[i][j].widht &&
+                Ray.dy >= block[i][j].y && Ray.dy <= block[i][j].y + block[i][j].height) {
+
+               
+
+
+
+
+            }
+        }
+    }
 }
 
 void CheckEndGame() {
