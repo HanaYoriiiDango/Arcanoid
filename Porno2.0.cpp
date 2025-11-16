@@ -31,8 +31,9 @@ struct Ray_ {
     float pointX, pointY; // начало отрисовки луча
     float percentage; // процент удаленности от начальной точки
     float length; // длина луча
-    float dx, dy; // 
-    float reflectX, reflectY;
+    float dx, dy; // отраженные вектора
+    float reflectX, reflectY; 
+    float minLeft, minRight, minTop, minBottom;
 
 };
 
@@ -155,6 +156,63 @@ void ShowObject() {
     }
 }
 
+void ReflectionRay() {
+
+    for (int i = 0; i < Ray.length; i++) {
+
+        Ray.percentage = i / Ray.length; // сколько занимает пиксель в процентном соотношение по длине всего вектора
+        // y = ax + b — формула линейной функции: x — переменная, a и b — параметры (любые числа)
+        // y = ax + b ---> // Pend = Pstart + RayLength * % удаленности от Pstart
+        Ray.dx = Ray.pointX + (Ray.reflectX * Ray.length) * Ray.percentage;
+        Ray.dy = Ray.pointY + (Ray.reflectY * Ray.length) * Ray.percentage;
+
+        SetPixel(window.mem_dc, Ray.dx, Ray.dy, RGB(42, 255, 0));
+
+        for (int j = 0; j < line; j++) {
+            for (int k = 0; k < column; k++) {
+
+                if (Ray.dx <= block[j][k].x + block[j][k].widht &&
+                    Ray.dx >= block[j][k].x &&
+                    Ray.dy <= block[j][k].y + block[j][k].height &&
+                    Ray.dy >= block[j][k].y && block[j][k].active) {
+
+                    Ray.minLeft = Ray.dx - block[j][k].x;
+                    Ray.minRight = (block[j][k].x + block[j][k].widht) - Ray.dx;
+                    Ray.minTop = Ray.dy - block[j][k].y;
+                    Ray.minBottom = (block[j][k].y + block[j][k].height) - Ray.dy;
+
+                    float minX = min(Ray.minLeft, Ray.minRight);
+                    float minY = min(Ray.minTop, Ray.minBottom);
+
+                    float newDX = Ray.dx + ball.x;
+                    float newDY = Ray.dy + ball.y;
+
+                    if (minX < minY) {
+
+                        Ray.reflectX = -Ray.reflectX; // отражаем вектор
+                        Ray.pointX = Ray.dx; // рисуем луч с новой точки
+                        Ray.pointY = Ray.dy;
+                        Ray.length = Ray.length - i; // длина луча пересчитывается как бы в обратную сторону
+                        i = 0; // Начинаем заново
+
+                    }
+                    else {
+                        Ray.reflectY = -Ray.reflectY; // отражение
+                        Ray.pointX = Ray.dx; // рисуем с новой точки (столкновения)
+                        Ray.pointY = Ray.dy;
+                        Ray.length = Ray.length - i; // пересчитываем
+                        i = 0; // начинаем снова с нуля
+                    }
+
+                    // Выходим из циклов после первого столкновения
+                    j = line;
+                    k = column;
+                }
+            }
+        }
+    }
+}
+
 void ShowRay() { // рисую луч отдельно, чтобы избежать конфликтов во времени исполнения кейсов
 
     for (int i = 0; i < 360; i++) {
@@ -163,67 +221,14 @@ void ShowRay() { // рисую луч отдельно, чтобы избежа�
         Ray.reflectX = ball.dx; // вектор отражения луча
         Ray.reflectY = ball.dy;
 
-        if (i == 0 || i == 1 || i == 2 || i == 3 || i == 4) {
+        if (i == 0 || i == 60 || i == 90 || i == 120 || i == 180) {
 
-            // x1 = r * sin/cos(i) + x/y ball; 
-            Ray.pointX = ball.rad * cos(i) + ball.x; // середина шарика (начало отрисовки луча)
-            Ray.pointY = ball.rad * sin(i) + ball.y;
+            Ray.pointX = (ball.rad / 2.0f) * sin(i) + ball.x + (ball.rad / 2.0f); // x1 = r * sin/cos(i) + x/y ball; 
+            Ray.pointY = (ball.rad / 2.0f) * cos(i) + ball.y + (ball.rad / 2.0f);
 
-            for (int j = 0; j < Ray.length; j++) {
-                for (int k = 0; k < line; k++) {
-                    for (int p = 0; p < column; p++) {
-
-                        Ray.percentage = j / Ray.length; // сколько занимает пиксель в процентном соотношение по длине всего вектора
-                        // y = ax + b — формула линейной функции: x — переменная, a и b — параметры (любые числа)
-                        // y = ax + b ---> // Pend = Pstart + RayLength * % удаленности от Pstart
-                        Ray.dx = Ray.pointX + (Ray.reflectX * Ray.length) * Ray.percentage;
-                        Ray.dy = Ray.pointY + (Ray.reflectY * Ray.length) * Ray.percentage;
-
-                        SetPixel(window.mem_dc, Ray.dx, Ray.dy, RGB(42, 255, 0));
-
-                        //if (Ray.dx <= block[k][p].x + block[k][p].widht &&
-                        //    Ray.dx >= block[k][p].x &&
-                        //    Ray.dy <= block[k][p].y + block[k][p].height &&
-                        //    Ray.dy >= block[k][p].y && block[k][p].active) {
-
-                        //    float minLeft = Ray.dx - block[k][p].x;
-                        //    float minRight = (block[k][p].x + block[k][p].widht) - Ray.dx;
-                        //    float minTop = Ray.dy - block[k][p].y;
-                        //    float minBottom = (block[k][p].y + block[k][p].height) - Ray.dy;
-
-                        //    float minX = min(minLeft, minRight);
-                        //    float minY = min(minTop, minBottom);
-
-                        //    float newDX = Ray.dx + ball.x;
-                        //    float newDY = Ray.dy + ball.y;
-                        // 
-                        //   if (minX < minY) {
-
-                        //       Ray.reflectX = -Ray.reflectX; // отражаем вектор
-                        //       Ray.pointX = Ray.dx; // рисуем луч с новой точки
-                        //       Ray.pointY = Ray.dy;
-                        //       Ray.length = Ray.length - i; // длина луча пересчитывается как бы в обратную сторону
-                        //       i = 0; // Начинаем заново
-
-                        //   }
-                        //   else {
-                        //       Ray.reflectY = -Ray.reflectY; // отражение
-                        //       Ray.pointX = Ray.dx; // рисуем с новой точки (столкновения)
-                        //       Ray.pointY = Ray.dy;
-                        //       Ray.length = Ray.length - i; // пересчитываем
-                        //       i = 0; // начинаем снова с нуля
-                        //   }
-
-                        //   // Выходим из циклов после первого столкновения
-                        //   j = line;
-                        //   k = column;
-                        //}
-                    }
-                }
-            }
+            ReflectionRay();
         }
     }
-//}
 }
 
 void ShowGame() {
