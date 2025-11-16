@@ -157,71 +157,73 @@ void ShowObject() {
 
 void ShowRay() { // рисую луч отдельно, чтобы избежать конфликтов во времени исполнения кейсов
 
+    for (int i = 0; i < 360; i++) {
 
+        Ray.length = ball.speed; // длина вектора шарика 
+        Ray.reflectX = ball.dx; // вектор отражения луча
+        Ray.reflectY = ball.dy;
 
-    for (int p = 0; p < 1; p++) {
-    Ray.length = ball.speed; // длина вектора шарика 
-    Ray.pointX = ; // середина шарика (начало отрисовки луча)
-    Ray.pointY = ;
-    Ray.reflectX = ball.dx; // вектор отражения луча
-    Ray.reflectY = ball.dy;
+        if (i == 0 || i == 1 || i == 2 || i == 3 || i == 4) {
 
-    // x1 = r * sin/cos(i) + x/y ball; 
+            // x1 = r * sin/cos(i) + x/y ball; 
+            Ray.pointX = ball.rad * cos(i) + ball.x; // середина шарика (начало отрисовки луча)
+            Ray.pointY = ball.rad * sin(i) + ball.y;
 
+            for (int j = 0; j < Ray.length; j++) {
+                for (int k = 0; k < line; k++) {
+                    for (int p = 0; p < column; p++) {
 
-      for (int i = 0; i < Ray.length; i++) {
-           for (int j = 0; j < line; j++) {
-               for (int k = 0; k < column; k++) {
+                        Ray.percentage = j / Ray.length; // сколько занимает пиксель в процентном соотношение по длине всего вектора
+                        // y = ax + b — формула линейной функции: x — переменная, a и b — параметры (любые числа)
+                        // y = ax + b ---> // Pend = Pstart + RayLength * % удаленности от Pstart
+                        Ray.dx = Ray.pointX + (Ray.reflectX * Ray.length) * Ray.percentage;
+                        Ray.dy = Ray.pointY + (Ray.reflectY * Ray.length) * Ray.percentage;
 
-                   Ray.percentage = i / Ray.length; // сколько занимает пиксель в процентном соотношение по длине всего вектора
-                   // y = ax + b — формула линейной функции: x — переменная, a и b — параметры (любые числа)
-                   // y = ax + b ---> // Pend = Pstart + RayLength * % удаленности от Pstart
-                   Ray.dx = Ray.pointX + (Ray.reflectX * Ray.length) * Ray.percentage;
-                   Ray.dy = Ray.pointY + (Ray.reflectY * Ray.length) * Ray.percentage;
+                        SetPixel(window.mem_dc, Ray.dx, Ray.dy, RGB(42, 255, 0));
 
-                   SetPixel(window.mem_dc, Ray.dx, Ray.dy, RGB(42, 255, 0));
+                        //if (Ray.dx <= block[k][p].x + block[k][p].widht &&
+                        //    Ray.dx >= block[k][p].x &&
+                        //    Ray.dy <= block[k][p].y + block[k][p].height &&
+                        //    Ray.dy >= block[k][p].y && block[k][p].active) {
 
-                   if (Ray.dx <= block[j][k].x + block[j][k].widht &&
-                       Ray.dx >= block[j][k].x &&
-                       Ray.dy <= block[j][k].y + block[j][k].height &&
-                       Ray.dy >= block[j][k].y && block[j][k].active) {
+                        //    float minLeft = Ray.dx - block[k][p].x;
+                        //    float minRight = (block[k][p].x + block[k][p].widht) - Ray.dx;
+                        //    float minTop = Ray.dy - block[k][p].y;
+                        //    float minBottom = (block[k][p].y + block[k][p].height) - Ray.dy;
 
-                       float minLeft = Ray.dx - block[j][k].x;
-                       float minRight = (block[j][k].x + block[j][k].widht) - Ray.dx;
-                       float minTop = Ray.dy - block[j][k].y;
-                       float minBottom = (block[j][k].y + block[j][k].height) - Ray.dy;
+                        //    float minX = min(minLeft, minRight);
+                        //    float minY = min(minTop, minBottom);
 
-                       float minX = min(minLeft, minRight);
-                       float minY = min(minTop, minBottom);
+                        //    float newDX = Ray.dx + ball.x;
+                        //    float newDY = Ray.dy + ball.y;
+                        // 
+                        //   if (minX < minY) {
 
-                       float newDX = Ray.dx + ball.x;
-                       float newDY = Ray.dy + ball.y;
-                    
-                      if (minX < minY) {
+                        //       Ray.reflectX = -Ray.reflectX; // отражаем вектор
+                        //       Ray.pointX = Ray.dx; // рисуем луч с новой точки
+                        //       Ray.pointY = Ray.dy;
+                        //       Ray.length = Ray.length - i; // длина луча пересчитывается как бы в обратную сторону
+                        //       i = 0; // Начинаем заново
 
-                          Ray.reflectX = -Ray.reflectX; // отражаем вектор
-                          Ray.pointX = Ray.dx; // рисуем луч с новой точки
-                          Ray.pointY = Ray.dy;
-                          Ray.length = Ray.length - i; // длина луча пересчитывается как бы в обратную сторону
-                          i = 0; // Начинаем заново
+                        //   }
+                        //   else {
+                        //       Ray.reflectY = -Ray.reflectY; // отражение
+                        //       Ray.pointX = Ray.dx; // рисуем с новой точки (столкновения)
+                        //       Ray.pointY = Ray.dy;
+                        //       Ray.length = Ray.length - i; // пересчитываем
+                        //       i = 0; // начинаем снова с нуля
+                        //   }
 
-                      }
-                      else {
-                          Ray.reflectY = -Ray.reflectY; // отражение
-                          Ray.pointX = Ray.dx; // рисуем с новой точки (столкновения)
-                          Ray.pointY = Ray.dy;
-                          Ray.length = Ray.length - i; // пересчитываем
-                          i = 0; // начинаем снова с нуля
-                      }
-
-                      // Выходим из циклов после первого столкновения
-                      j = line;
-                      k = column;
-                   }
-               }
-           }
-      }
+                        //   // Выходим из циклов после первого столкновения
+                        //   j = line;
+                        //   k = column;
+                        //}
+                    }
+                }
+            }
+        }
     }
+//}
 }
 
 void ShowGame() {
