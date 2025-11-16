@@ -80,20 +80,12 @@ void InitGame() {
 
     ball.widht = 40;
     ball.height = 40;
-    ball.rad = 40;
+    ball.rad = 30;
 
-    //ball.x = (window.width + racket.widht - ball.widht) / 2.0f; // половина экрана, половина ракетки с учетом ширины шарика
-    //ball.y = racket.y - racket.height; // шарк выше ракетки на ее высоту
-    ball.speed = 150; // длина вектора фиксирована
-    //ball.speed = (sqrt((ball.x * ball.x) + (ball.y * ball.y))); // длина вектора
-    /*
-        Длина вектора (по сути она же скорость) - это модуль расстояния на которое сдвигается
-        объект. Он рассчитывается по теореме пифагора |a| = ?x?+y?
-        резултатом будет некое число, пример: |a| = ?3?+4? = ?25 = 5
-    
-    */
-    //ball.dy = ball.x / ball.speed;
-    //ball.dx = ball.y / ball.speed;
+    ball.x = (window.width + racket.widht - ball.widht) / 2.0f; // половина экрана, половина ракетки с учетом ширины шарика
+    ball.y = racket.y - racket.height; // шарк выше ракетки на ее высоту
+    ball.speed = 20; // длина вектора фиксирована
+ 
     ball.dy = (rand() % 65 + 35) / 100.0f; // здесь будут значения от 0.35 до 0.99
     ball.dx = abs(1 - ball.dy); // нормализуем второй вектор относительно первого 
 
@@ -142,11 +134,6 @@ void ShowObject() {
     for (int i = 0; i < line; i++) {
         for (int j = 0; j < column; j++) {
             
-            block[3][4].active = false;
-            block[3][3].active = false;
-            block[4][3].active = false;
-            block[4][4].active = false;
-
             if (block[i][j].active) {
 
                 ShowSprite(block[i][j].x, block[i][j].y, block[i][j].widht, block[i][j].height, block[i][j].hBitmap, true);
@@ -217,7 +204,7 @@ void ShowRay() { // рисую луч отдельно, чтобы избежа�
 
     for (int i = 0; i < 360; i++) {
 
-        Ray.length = ball.speed; // длина вектора шарика 
+        Ray.length = ball.speed * 7; // длина вектора шарика 
         Ray.reflectX = ball.dx; // вектор отражения луча 
         Ray.reflectY = ball.dy;
 
@@ -271,7 +258,6 @@ void CheckWalls() {
     //ball.dx = ball.dx * -1; // если умножать вектор на число, то меняется его длина 
     // но не направление (при условии что число положительное)
     // соответсвенно чтобы "отзеркалить" вектор нужно умножить его на -нормаль
-    // 
 
     if (ball.x <= 0 || ball.x + ball.rad >= window.width) { // столкновение с боками, меняем только x
 
@@ -299,31 +285,41 @@ void CheckRacket() {
 
 void CollisionBlock() {
 
-    Ray.length = ball.speed; // длина вектора шарика 
-    Ray.pointX = ball.x + (ball.rad / 2.0); // середина шарика (начало отрисовки луча)
-    Ray.pointY = ball.y + (ball.rad / 2.0);
-    Ray.reflectX = ball.dx; // вектор отражения луча
-    Ray.reflectY = ball.dy;
-
-    for (int i = 0; i < Ray.length; i++) {
-    
-        
-    
-    
-    
-    }
+    bool collisionHand = false;
 
     for (int i = 0; i < line; i++) {
         for (int j = 0; j < column; j++) {
 
-            if (Ray.dx >= block[i][j].x && Ray.dx <= block[i][j].x + block[i][j].widht &&
-                Ray.dy >= block[i][j].y && Ray.dy <= block[i][j].y + block[i][j].height) {
+            if (ball.x + ball.rad >= block[i][j].x && 
+                ball.x <= block[i][j].x + block[i][j].widht &&
+                ball.y <= block[i][j].y + block[i][j].height &&
+                ball.y + ball.rad >= block[i][j].y ) {
 
-               
+                if (!collisionHand && block[i][j].active) {
 
+                    float minLeft = (ball.x + ball.rad) - block[i][j].x;
+                    float minRight = (block[i][j].x + block[i][j].widht) - ball.x;
+                    float minTop = (ball.y + ball.rad) - block[i][j].y;
+                    float minBottom = (block[i][j].y + block[i][j].height) - ball.y;
 
+                    float CoordX = min(minLeft, minRight);
+                    float CoordY = min(minTop, minBottom);
 
+                    if (CoordX < CoordY) {
+                        ball.dx *= -1;
+                        block[i][j].active = false;
 
+                    }
+                    else {
+                    
+                        ball.dy *= -1;
+                        block[i][j].active = false;
+                    
+                    }
+
+                    collisionHand = true;
+
+                }
             }
         }
     }
@@ -353,7 +349,7 @@ void ProcessInput(WPARAM wParam) {
 
 void ProcessGame() {
 
-    //ProcessBall();
+    ProcessBall();
     LimitRacket();
     CheckWalls();
     CheckRacket();
@@ -480,12 +476,9 @@ LRESULT CALLBACK WndProc(
 
     case WM_TIMER: 
     {
-        GetCursorPos(&p);
-        ball.x = p.x;
-        ball.y = p.y;
-        
         ProcessGame();
         InvalidateRect(hwnd, NULL, FALSE);
+
     }
 
         break;
