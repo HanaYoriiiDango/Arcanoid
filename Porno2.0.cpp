@@ -218,7 +218,7 @@ void ShowRay() { // рисую луч отдельно, чтобы избежа�
     for (int i = 0; i < 360; i++) {
 
         Ray.length = ball.speed; // длина вектора шарика 
-        Ray.reflectX = ball.dx; // вектор отражения луча
+        Ray.reflectX = ball.dx; // вектор отражения луча 
         Ray.reflectY = ball.dy;
 
         if (i == 0 || i == 60 || i == 90 || i == 120 || i == 180) {
