@@ -64,7 +64,13 @@ void InitGame() {
     GG.speed = 30;
 
     
+    for (int i = 0; i < line; i++) {
+        for (int j = 0; j < column; j++) {
 
+            beds[i][j].active = true;
+            
+        }
+    }
 
 
 }
