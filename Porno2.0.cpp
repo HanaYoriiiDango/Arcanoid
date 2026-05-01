@@ -19,26 +19,24 @@ struct { // если делать через структуру
 
 } window;
 
-struct sprite {
-    float x, y, speed, rad, dx, dy;
+struct {
+    bool action = false;
+
+} game;
+
+
+class sprite {
+public:
+    
+    float x, y, speed, rad;
     int widht, height;
     bool active = true;
     HBITMAP hBitmap;
 
 };
 
-struct {
-    bool action = false;
-
-} game;
-
-const int line = 12, column = 8;
 sprite GG;
-sprite racket;
-sprite beds[line][column];
-
-POINT p;
-
+sprite Beds[6];
 
 void InitWindow() {
 
@@ -56,22 +54,21 @@ void InitGame() {
 
     window.hBack = (HBITMAP)LoadImageW(NULL, L"fon.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     GG.hBitmap = (HBITMAP)LoadImageW(NULL, L"ball.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-    auto bmpBlock = (HBITMAP)LoadImageW(NULL, L"beds.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
     GG.widht = 40;
     GG.height = 40;
     GG.rad = 30;
     GG.speed = 30;
 
-    
-    for (int i = 0; i < line; i++) {
-        for (int j = 0; j < column; j++) {
+    for (int i = 0; i < 6; i++) {
 
-            beds[i][j].active = true;
-            
-        }
+        Beds[i].hBitmap = (HBITMAP)LoadImageW(NULL, L"beds.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        Beds[i].widht = 
+
+
     }
 
+ 
 
 }
 
@@ -102,16 +99,6 @@ void ShowObject() {
     ShowSprite(0, 0, window.width, window.height, window.hBack, false);
     ShowSprite(GG.x, GG.y, GG.widht, GG.height, GG.hBitmap, true);
 
-    for (int i = 0; i < line; i++) {
-        for (int j = 0; j < column; j++) {
-            
-            if (beds[i][j].active) {
-
-                ShowSprite(beds[i][j].x, beds[i][j].y, beds[i][j].widht, beds[i][j].height, beds[i][j].hBitmap, true);
-
-            }
-        }
-    }
 }
 
 void ShowGame() {
@@ -131,7 +118,7 @@ void ShowGame() {
 
 void CollisionBlock() {
 
-    bool collisionHand = false;
+   /* bool collisionHand = false;
 
     for (int i = 0; i < line; i++) {
         for (int j = 0; j < column; j++) {
@@ -168,7 +155,7 @@ void CollisionBlock() {
                 }
             }
         }
-    }
+    }*/
 }
 
 void ProcessInput(WPARAM wParam) {
