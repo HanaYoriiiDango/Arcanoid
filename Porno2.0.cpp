@@ -32,10 +32,10 @@ struct {
 
 } game;
 
-const int line = 24, column = 12;
+const int line = 12, column = 8;
 sprite GG;
 sprite racket;
-sprite block[line][column];
+sprite beds[line][column];
 
 POINT p;
 
@@ -56,31 +56,17 @@ void InitGame() {
 
     window.hBack = (HBITMAP)LoadImageW(NULL, L"fon.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     GG.hBitmap = (HBITMAP)LoadImageW(NULL, L"ball.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-    auto bmpBlock = (HBITMAP)LoadImageW(NULL, L"Lesha.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    auto bmpBlock = (HBITMAP)LoadImageW(NULL, L"beds.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
     GG.widht = 40;
     GG.height = 40;
     GG.rad = 30;
+    GG.speed = 30;
 
-    GG.x = (window.width + racket.widht - GG.widht) / 2.0f; // половина экрана, половина ракетки с учетом ширины шарика
-    GG.y = racket.y - racket.height; // шарк выше ракетки на ее высоту
-    GG.speed = 20; // длина вектора фиксирована
- 
-    GG.dy = (rand() % 65 + 35) / 100.0f; // здесь будут значения от 0.35 до 0.99
-    GG.dx = abs(1 - GG.dy); // нормализуем второй вектор относительно первого 
+    
 
 
-    for (int i = 0; i < line; i++) {
-        for (int j = 0; j < column; j++) {
 
-            block[i][j].widht = window.width / line;
-            block[i][j].height = window.height / 4 / column;
-            block[i][j].x = block[i][j].widht * i;
-            block[i][j].y = block[i][j].height * j + window.height / 4;
-            block[i][j].hBitmap = bmpBlock;
-
-        }
-    }
 }
 
 void ShowSprite(int x, int y, int w, int h, HBITMAP hBitmap, bool transparent) {
@@ -113,9 +99,9 @@ void ShowObject() {
     for (int i = 0; i < line; i++) {
         for (int j = 0; j < column; j++) {
             
-            if (block[i][j].active) {
+            if (beds[i][j].active) {
 
-                ShowSprite(block[i][j].x, block[i][j].y, block[i][j].widht, block[i][j].height, block[i][j].hBitmap, true);
+                ShowSprite(beds[i][j].x, beds[i][j].y, beds[i][j].widht, beds[i][j].height, beds[i][j].hBitmap, true);
 
             }
         }
@@ -144,30 +130,30 @@ void CollisionBlock() {
     for (int i = 0; i < line; i++) {
         for (int j = 0; j < column; j++) {
 
-            if (GG.x + GG.rad >= block[i][j].x && 
-                GG.x <= block[i][j].x + block[i][j].widht &&
-                GG.y <= block[i][j].y + block[i][j].height &&
-                GG.y + GG.rad >= block[i][j].y ) {
+            if (GG.x + GG.rad >= beds[i][j].x &&
+                GG.x <= beds[i][j].x + beds[i][j].widht &&
+                GG.y <= beds[i][j].y + beds[i][j].height &&
+                GG.y + GG.rad >= beds[i][j].y ) {
 
-                if (!collisionHand && block[i][j].active) {
+                if (!collisionHand && beds[i][j].active) {
 
-                    float minLeft = (GG.x + GG.rad) - block[i][j].x;
-                    float minRight = (block[i][j].x + block[i][j].widht) - GG.x;
-                    float minTop = (GG.y + GG.rad) - block[i][j].y;
-                    float minBottom = (block[i][j].y + block[i][j].height) - GG.y;
+                    float minLeft = (GG.x + GG.rad) - beds[i][j].x;
+                    float minRight = (beds[i][j].x + beds[i][j].widht) - GG.x;
+                    float minTop = (GG.y + GG.rad) - beds[i][j].y;
+                    float minBottom = (beds[i][j].y + beds[i][j].height) - GG.y;
 
                     float CoordX = min(minLeft, minRight);
                     float CoordY = min(minTop, minBottom);
 
                     if (CoordX < CoordY) {
 
-                        block[i][j].active = false;
+                        beds[i][j].active = false;
 
                     }
                     else {
                     
 
-                        block[i][j].active = false;
+                        beds[i][j].active = false;
                     
                     }
 
@@ -181,10 +167,13 @@ void CollisionBlock() {
 
 void ProcessInput(WPARAM wParam) {
 
+    float slow = 0.8f;
+
     if (wParam == VK_ESCAPE) DestroyWindow(window.hwnd); // уничтожаем окно
-    if (wParam == VK_LEFT) racket.x -= racket.speed;
-    if (wParam == VK_RIGHT) racket.x += racket.speed;
-    if (wParam == VK_SPACE) game.action = true;
+    if (wParam == 'W') GG.y -= GG.speed * slow;
+    if (wParam == 'A') GG.x -= GG.speed * slow;
+    if (wParam == 'S') GG.y += GG.speed * slow;
+    if (wParam == 'D') GG.x += GG.speed * slow;
 
 }
 
@@ -197,7 +186,6 @@ void ProcessGame() {
 void ClearGame() {
 
     DeleteObject(GG.hBitmap);
-    DeleteObject(racket.hBitmap);
     DeleteObject(window.hBack);
 
 }
@@ -312,6 +300,7 @@ LRESULT CALLBACK WndProc(
 
     case WM_TIMER: 
     {
+
         ProcessGame();
         InvalidateRect(hwnd, NULL, FALSE);
 
