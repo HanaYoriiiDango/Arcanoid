@@ -36,7 +36,7 @@ public:
 };
 
 sprite GG;
-sprite Beds[6];
+sprite Beds;
 
 void InitWindow() {
 
@@ -60,14 +60,12 @@ void InitGame() {
     GG.rad = 30;
     GG.speed = 30;
 
-    for (int i = 0; i < 6; i++) {
+    GG.x = 700;
+    GG.y = 700;
 
-        Beds[i].hBitmap = (HBITMAP)LoadImageW(NULL, L"beds.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-        Beds[i].widht = 
-
-
-    }
-
+    Beds.hBitmap = (HBITMAP)LoadImageW(NULL, L"beds.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    Beds.widht = 1365;
+    Beds.height = 767;
  
 
 }
@@ -98,7 +96,8 @@ void ShowObject() {
 
     ShowSprite(0, 0, window.width, window.height, window.hBack, false);
     ShowSprite(GG.x, GG.y, GG.widht, GG.height, GG.hBitmap, true);
-
+    ShowSprite(Beds.x, Beds.y, Beds.widht, Beds.height, Beds.hBitmap, true);
+    
 }
 
 void ShowGame() {
@@ -180,6 +179,7 @@ void ClearGame() {
 
     DeleteObject(GG.hBitmap);
     DeleteObject(window.hBack);
+    DeleteObject(Beds.hBitmap);
 
 }
 
