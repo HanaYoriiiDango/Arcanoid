@@ -42,7 +42,7 @@ struct {
 
 } game;
 
-const int line = 15, column = 7;
+const int line = 24, column = 12;
 sprite ball;
 sprite racket;
 sprite block[line][column];
@@ -68,7 +68,7 @@ void InitGame() {
     window.hBack = (HBITMAP)LoadImageW(NULL, L"fon.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     racket.hBitmap = (HBITMAP)LoadImageW(NULL, L"racket.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     ball.hBitmap = (HBITMAP)LoadImageW(NULL, L"ball.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-    auto bmpBlock = (HBITMAP)LoadImageW(NULL, L"kotek.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    auto bmpBlock = (HBITMAP)LoadImageW(NULL, L"Lesha.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
     float slow = 0.4f;
 
