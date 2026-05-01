@@ -27,26 +27,15 @@ struct sprite {
 
 };
 
-struct Ray_ {
-    float pointX, pointY; // начало отрисовки луча
-    float percentage; // процент удаленности от начальной точки
-    float length; // длина луча
-    float dx, dy; // отраженные вектора
-    float reflectX, reflectY; 
-    float minLeft, minRight, minTop, minBottom;
-
-};
-
 struct {
     bool action = false;
 
 } game;
 
 const int line = 24, column = 12;
-sprite ball;
+sprite GG;
 sprite racket;
 sprite block[line][column];
-Ray_ Ray;
 
 POINT p;
 
@@ -66,28 +55,19 @@ void InitGame() {
     srand(time(nullptr));
 
     window.hBack = (HBITMAP)LoadImageW(NULL, L"fon.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-    racket.hBitmap = (HBITMAP)LoadImageW(NULL, L"racket.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-    ball.hBitmap = (HBITMAP)LoadImageW(NULL, L"ball.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+    GG.hBitmap = (HBITMAP)LoadImageW(NULL, L"ball.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
     auto bmpBlock = (HBITMAP)LoadImageW(NULL, L"Lesha.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
 
-    float slow = 0.4f;
+    GG.widht = 40;
+    GG.height = 40;
+    GG.rad = 30;
 
-    racket.widht = 300;
-    racket.height = 40;
-    racket.x = window.width / 2.0f; // ракетка ровно посередне экрана
-    racket.y = window.height - racket.height; // выше границы экрана на свою высоту
-    racket.speed = 40.0f * slow;
-
-    ball.widht = 40;
-    ball.height = 40;
-    ball.rad = 30;
-
-    ball.x = (window.width + racket.widht - ball.widht) / 2.0f; // половина экрана, половина ракетки с учетом ширины шарика
-    ball.y = racket.y - racket.height; // шарк выше ракетки на ее высоту
-    ball.speed = 20; // длина вектора фиксирована
+    GG.x = (window.width + racket.widht - GG.widht) / 2.0f; // половина экрана, половина ракетки с учетом ширины шарика
+    GG.y = racket.y - racket.height; // шарк выше ракетки на ее высоту
+    GG.speed = 20; // длина вектора фиксирована
  
-    ball.dy = (rand() % 65 + 35) / 100.0f; // здесь будут значения от 0.35 до 0.99
-    ball.dx = abs(1 - ball.dy); // нормализуем второй вектор относительно первого 
+    GG.dy = (rand() % 65 + 35) / 100.0f; // здесь будут значения от 0.35 до 0.99
+    GG.dx = abs(1 - GG.dy); // нормализуем второй вектор относительно первого 
 
 
     for (int i = 0; i < line; i++) {
@@ -128,8 +108,7 @@ void ShowSprite(int x, int y, int w, int h, HBITMAP hBitmap, bool transparent) {
 void ShowObject() {
 
     ShowSprite(0, 0, window.width, window.height, window.hBack, false);
-    ShowSprite(racket.x, racket.y, racket.widht, racket.height, racket.hBitmap, true);
-    ShowSprite(ball.x, ball.y, ball.widht, ball.height, ball.hBitmap, true);
+    ShowSprite(GG.x, GG.y, GG.widht, GG.height, GG.hBitmap, true);
 
     for (int i = 0; i < line; i++) {
         for (int j = 0; j < column; j++) {
@@ -143,81 +122,6 @@ void ShowObject() {
     }
 }
 
-void ReflectionRay() {
-
-    for (int i = 0; i < Ray.length; i++) {
-
-        Ray.percentage = i / Ray.length; // сколько занимает пиксель в процентном соотношение по длине всего вектора
-        // y = ax + b — формула линейной функции: x — переменная, a и b — параметры (любые числа)
-        // y = ax + b ---> // Pend = Pstart + RayLength * % удаленности от Pstart
-        Ray.dx = Ray.pointX + (Ray.reflectX * Ray.length) * Ray.percentage;
-        Ray.dy = Ray.pointY + (Ray.reflectY * Ray.length) * Ray.percentage;
-
-        SetPixel(window.mem_dc, Ray.dx, Ray.dy, RGB(42, 255, 0));
-
-        for (int j = 0; j < line; j++) {
-            for (int k = 0; k < column; k++) {
-
-                if (Ray.dx <= block[j][k].x + block[j][k].widht &&
-                    Ray.dx >= block[j][k].x &&
-                    Ray.dy <= block[j][k].y + block[j][k].height &&
-                    Ray.dy >= block[j][k].y && block[j][k].active) {
-
-                    Ray.minLeft = Ray.dx - block[j][k].x;
-                    Ray.minRight = (block[j][k].x + block[j][k].widht) - Ray.dx;
-                    Ray.minTop = Ray.dy - block[j][k].y;
-                    Ray.minBottom = (block[j][k].y + block[j][k].height) - Ray.dy;
-
-                    float minX = min(Ray.minLeft, Ray.minRight);
-                    float minY = min(Ray.minTop, Ray.minBottom);
-
-                    float newDX = Ray.dx + ball.x;
-                    float newDY = Ray.dy + ball.y;
-
-                    if (minX < minY) {
-
-                        Ray.reflectX = -Ray.reflectX; // отражаем вектор
-                        Ray.pointX = Ray.dx; // рисуем луч с новой точки
-                        Ray.pointY = Ray.dy;
-                        Ray.length = Ray.length - i; // длина луча пересчитывается как бы в обратную сторону
-                        i = 0; // Начинаем заново
-
-                    }
-                    else {
-                        Ray.reflectY = -Ray.reflectY; // отражение
-                        Ray.pointX = Ray.dx; // рисуем с новой точки (столкновения)
-                        Ray.pointY = Ray.dy;
-                        Ray.length = Ray.length - i; // пересчитываем
-                        i = 0; // начинаем снова с нуля
-                    }
-
-                    // Выходим из циклов после первого столкновения
-                    j = line;
-                    k = column;
-                }
-            }
-        }
-    }
-}
-
-void ShowRay() { // рисую луч отдельно, чтобы избежать конфликтов во времени исполнения кейсов
-
-    for (int i = 0; i < 360; i++) {
-
-        Ray.length = ball.speed * 7; // длина вектора шарика 
-        Ray.reflectX = ball.dx; // вектор отражения луча 
-        Ray.reflectY = ball.dy;
-
-        if (i == 0 || i == 60 || i == 90 || i == 120 || i == 180) {
-
-            Ray.pointX = (ball.rad / 2.0f) * sin(i) + ball.x + (ball.rad / 2.0f); // x1 = r * sin/cos(i) + x/y ball; 
-            Ray.pointY = (ball.rad / 2.0f) * cos(i) + ball.y + (ball.rad / 2.0f);
-
-            ReflectionRay();
-        }
-    }
-}
-
 void ShowGame() {
 
     window.mem_dc = CreateCompatibleDC(window.hdc);
@@ -225,62 +129,12 @@ void ShowGame() {
     HBITMAP hOldBmp = (HBITMAP)SelectObject(window.mem_dc, hMemBmp);
 
     ShowObject();
-    ShowRay();
 
     BitBlt(window.hdc, 0, 0, window.width, window.height, window.mem_dc, 0, 0, SRCCOPY);
 
     SelectObject(window.mem_dc, hOldBmp);
     DeleteObject(hOldBmp);
     DeleteDC(window.mem_dc);
-}
-
-void ProcessBall() {
-
-    if (game.action) {
-
-        ball.x += ball.speed * ball.dx; // пускаем мячик в рандомном направлении 
-        ball.y -= ball.speed * ball.dy; // умножаю вектор скорости на нормаль
-
-    }
-    else ball.x = racket.x + (racket.widht - ball.widht) / 2.0f;
-
-}
-
-void LimitRacket() {
-
-    racket.x = min(racket.x, window.width - racket.widht);
-    racket.x = max(racket.x, 0);
-
-}
-
-void CheckWalls() {
-
-    //ball.dx = ball.dx * -1; // если умножать вектор на число, то меняется его длина 
-    // но не направление (при условии что число положительное)
-    // соответсвенно чтобы "отзеркалить" вектор нужно умножить его на -нормаль
-
-    if (ball.x <= 0 || ball.x + ball.rad >= window.width) { // столкновение с боками, меняем только x
-
-        ball.dx *= -1.0f;
-
-    }
-    else if (ball.y <= 0) { // столкновение с верхней стенкой - меняем y
-
-        ball.dy *= -1.0f;
-
-    }
-}
-
-void CheckRacket() {
-
-    if (ball.y + ball.rad >= racket.y) {
-
-        if (ball.x >= racket.x && ball.x <= racket.x + racket.widht) {
-
-            ball.dy *= -1.0f;
-            
-        }
-    }
 }
 
 void CollisionBlock() {
@@ -290,29 +144,29 @@ void CollisionBlock() {
     for (int i = 0; i < line; i++) {
         for (int j = 0; j < column; j++) {
 
-            if (ball.x + ball.rad >= block[i][j].x && 
-                ball.x <= block[i][j].x + block[i][j].widht &&
-                ball.y <= block[i][j].y + block[i][j].height &&
-                ball.y + ball.rad >= block[i][j].y ) {
+            if (GG.x + GG.rad >= block[i][j].x && 
+                GG.x <= block[i][j].x + block[i][j].widht &&
+                GG.y <= block[i][j].y + block[i][j].height &&
+                GG.y + GG.rad >= block[i][j].y ) {
 
                 if (!collisionHand && block[i][j].active) {
 
-                    float minLeft = (ball.x + ball.rad) - block[i][j].x;
-                    float minRight = (block[i][j].x + block[i][j].widht) - ball.x;
-                    float minTop = (ball.y + ball.rad) - block[i][j].y;
-                    float minBottom = (block[i][j].y + block[i][j].height) - ball.y;
+                    float minLeft = (GG.x + GG.rad) - block[i][j].x;
+                    float minRight = (block[i][j].x + block[i][j].widht) - GG.x;
+                    float minTop = (GG.y + GG.rad) - block[i][j].y;
+                    float minBottom = (block[i][j].y + block[i][j].height) - GG.y;
 
                     float CoordX = min(minLeft, minRight);
                     float CoordY = min(minTop, minBottom);
 
                     if (CoordX < CoordY) {
-                        ball.dx *= -1;
+
                         block[i][j].active = false;
 
                     }
                     else {
                     
-                        ball.dy *= -1;
+
                         block[i][j].active = false;
                     
                     }
@@ -322,19 +176,6 @@ void CollisionBlock() {
                 }
             }
         }
-    }
-}
-
-void CheckEndGame() {
-
-    if (ball.y + ball.rad > window.height) {
-
-        game.action = false;
-        ball.x = racket.x + (racket.widht - ball.widht) / 2.0f;
-        ball.y = racket.y - racket.height;
-        ball.dy = (rand() % 65 + 35) / 100.0f; // здесь будут значения от 0.35 до 0.99
-        ball.dx = abs(1 - ball.dy); // нормализуем второй вектор относительно первого 
-
     }
 }
 
@@ -349,18 +190,13 @@ void ProcessInput(WPARAM wParam) {
 
 void ProcessGame() {
 
-    ProcessBall();
-    LimitRacket();
-    CheckWalls();
-    CheckRacket();
     CollisionBlock();
-    CheckEndGame();
 
 }
 
 void ClearGame() {
 
-    DeleteObject(ball.hBitmap);
+    DeleteObject(GG.hBitmap);
     DeleteObject(racket.hBitmap);
     DeleteObject(window.hBack);
 
