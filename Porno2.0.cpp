@@ -31,12 +31,15 @@ public:
     float x, y, speed, rad;
     int widht, height;
     bool active = true;
+    bool collision = false;
     HBITMAP hBitmap;
 
 };
 
 sprite GG;
-sprite Beds;
+vector <sprite> Beds;
+
+const float ConstDistance = 50.0f;
 
 void InitWindow() {
 
@@ -63,11 +66,20 @@ void InitGame() {
     GG.x = 700;
     GG.y = 700;
 
-    Beds.hBitmap = (HBITMAP)LoadImageW(NULL, L"beds.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
-    Beds.widht = 1365;
-    Beds.height = 767;
- 
+    for (int i = 0; i < 4; i++) {
 
+        sprite newbed;
+
+        newbed.hBitmap = (HBITMAP)LoadImageW(NULL, L"Bebezyna.bmp", IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE);
+        newbed.widht = 400;
+        newbed.height = 225;
+        newbed.x = i * 350 + 200;
+        newbed.y = 200;
+        newbed.collision = true;
+
+        Beds.push_back(newbed);
+
+    }
 }
 
 void ShowSprite(int x, int y, int w, int h, HBITMAP hBitmap, bool transparent) {
@@ -95,9 +107,14 @@ void ShowSprite(int x, int y, int w, int h, HBITMAP hBitmap, bool transparent) {
 void ShowObject() {
 
     ShowSprite(0, 0, window.width, window.height, window.hBack, false);
-    ShowSprite(GG.x, GG.y, GG.widht, GG.height, GG.hBitmap, true);
-    ShowSprite(Beds.x, Beds.y, Beds.widht, Beds.height, Beds.hBitmap, true);
     
+    for (int i = 0; i < Beds.size(); i++) {
+
+        ShowSprite(Beds[i].x, Beds[i].y, Beds[i].widht, Beds[i].height, Beds[i].hBitmap, true);
+
+    }
+
+    ShowSprite(GG.x, GG.y, GG.widht, GG.height, GG.hBitmap, true);
 }
 
 void ShowGame() {
@@ -116,6 +133,8 @@ void ShowGame() {
 }
 
 void CollisionBlock() {
+
+
 
    /* bool collisionHand = false;
 
@@ -157,6 +176,16 @@ void CollisionBlock() {
     }*/
 }
 
+void ShowListBeds() {
+
+
+
+
+
+
+}
+
+
 void ProcessInput(WPARAM wParam) {
 
     float slow = 0.8f;
@@ -179,8 +208,12 @@ void ClearGame() {
 
     DeleteObject(GG.hBitmap);
     DeleteObject(window.hBack);
-    DeleteObject(Beds.hBitmap);
 
+    for (int i = 0; i < 4; i++) {
+
+        DeleteObject(Beds[i].hBitmap);
+
+    }
 }
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM); // просто объявление функции
@@ -206,7 +239,7 @@ int APIENTRY wWinMain( // Точка входа с поддержкой юник
     wc.cbSize = sizeof(WNDCLASSEX); // размеры класса, так и не понял зачем
     wc.lpfnWndProc = WndProc; // какой обработчик испоьзовать
     wc.hInstance = hInstance; // дескриптор приложения
-    wc.hCursor = NULL; // скрываю курсор
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW); // курсор
     wc.lpszClassName = CLASS_NAME;  // имя используемого класса
 
     // Регистрирую класс окна
@@ -275,7 +308,7 @@ LRESULT CALLBACK WndProc(
     case WM_CREATE: // здесь загрузка всех ресурсов при поздании окна 
 
         InitGame();
-        ShowCursor(FALSE); // скрыл курсор
+        ShowCursor(TRUE); // курсор
         SetTimer(hwnd, 1, 16, NULL);
 
         break;
@@ -307,7 +340,35 @@ LRESULT CALLBACK WndProc(
         InvalidateRect(hwnd, NULL, TRUE);
 
         break;
+     
+    case WM_LBUTTONDOWN: // обработка левой кнопки мыши
+    {
 
+        int mouseX = LOWORD(lParam);
+        int mouseY = HIWORD(lParam);
+
+        for (int i = 0; i < 4; i++) {
+
+            bool IsClickedOnBed = (mouseX >= Beds[i].x && mouseX <= Beds[i].x + Beds[i].widht &&
+                mouseY >= Beds[i].y && mouseY <= Beds[i].y + Beds[i].height);
+
+            if (IsClickedOnBed) {
+
+                if (Beds[i].collision == true) {
+
+                    bool IsNearBed = (GG.x + GG.widht >= Beds[i].x - ConstDistance) &&
+                        (GG.x <= Beds[i].x + Beds[i].widht + ConstDistance) &&
+                        (GG.y + GG.height >= Beds[i].y - ConstDistance) &&
+                        (GG.y <= Beds[i].y + Beds[i].height + ConstDistance);
+
+                    if (IsNearBed) MessageBox(window.hwnd, L"выберите, что посадить", L"посадка", MB_OK);
+                    else MessageBox(window.hwnd, L"подойди ближе к грядке даун", L"Далекоооооооо", MB_OK | MB_ICONINFORMATION);
+                }
+            }
+        }
+    }
+
+        break;
 
     case WM_DESTROY: // при уничтожении окна посылаем сообщение WM_QUIT - завершает цикл сообщений. 
 
